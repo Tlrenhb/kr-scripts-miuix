@@ -58,6 +58,12 @@ import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 
+private data class FavoriteItem(
+    val key: String,
+    val title: String,
+    val summary: String,
+)
+
 @Composable
 fun KrScriptApp() {
     val context = LocalContext.current
@@ -71,6 +77,7 @@ fun KrScriptApp() {
     var currentTitle by remember { mutableStateOf("KrScript Miuix") }
     var selectedTab by remember { mutableStateOf(0) }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
+    val favorites = remember { mutableStateListOf<FavoriteItem>() }
 
     Scaffold(
         topBar = {
@@ -106,6 +113,12 @@ fun KrScriptApp() {
                     icon = MiuixIcons.Info,
                     label = "关于"
                 )
+                NavigationBarItem(
+                    selected = selectedTab == 2,
+                    onClick = { selectedTab = 2 },
+                    icon = MiuixIcons.Favorites,
+                    label = "收藏"
+                )
             }
         }
     ) { padding ->
@@ -116,6 +129,21 @@ fun KrScriptApp() {
                 context = context,
                 shellRunner = shellRunner,
                 onActionClick = { actionForParams = it },
+                onAddFavorite = { node ->
+                    val key = node.key.ifEmpty { node.title }
+                    if (favorites.none { it.key == key && key.isNotEmpty() }) {
+                        favorites.add(
+                            FavoriteItem(
+                                key = key,
+                                title = node.title,
+                                summary = node.summary.ifEmpty { node.desc }
+                            )
+                        )
+                        Toast.makeText(context, "已收藏", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "已在收藏中", Toast.LENGTH_SHORT).show()
+                    }
+                },
                 onPageClick = { page ->
                     val path = page.pageConfigPath
                     if (path.isNotBlank()) {
@@ -136,8 +164,14 @@ fun KrScriptApp() {
                 shellRunner = shellRunner,
                 onDismiss = { actionForParams = null }
             )
-        } else {
+        } else if (selectedTab == 1) {
             AboutScreen(contentPadding = padding)
+        } else {
+            FavoritesScreen(
+                favorites = favorites,
+                contentPadding = padding,
+                onRemove = { favorites.remove(it) }
+            )
         }
     }
 }
@@ -169,6 +203,7 @@ private fun NodeListScreen(
     shellRunner: ShellRunner,
     onActionClick: (ActionNode) -> Unit,
     onPageClick: (PageNode) -> Unit,
+    onAddFavorite: (NodeInfoBase) -> Unit,
 ) {
     LazyColumn(
         contentPadding = contentPadding
@@ -186,6 +221,7 @@ private fun NodeListScreen(
                             shellRunner = shellRunner,
                             onActionClick = onActionClick,
                             onPageClick = onPageClick,
+                            onAddFavorite = onAddFavorite,
                         )
                     }
                 }
@@ -197,6 +233,7 @@ private fun NodeListScreen(
                             shellRunner = shellRunner,
                             onActionClick = onActionClick,
                             onPageClick = onPageClick,
+                            onAddFavorite = onAddFavorite,
                         )
                     }
                 }
@@ -212,6 +249,7 @@ private fun NodeItem(
     shellRunner: ShellRunner,
     onActionClick: (ActionNode) -> Unit,
     onPageClick: (PageNode) -> Unit,
+    onAddFavorite: (NodeInfoBase) -> Unit,
 ) {
     when (node) {
         is SwitchNode -> {
@@ -221,6 +259,11 @@ private fun NodeItem(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
                 checked = checked,
+                endActions = {
+                    IconButton(onClick = { onAddFavorite(node) }) {
+                        Icon(MiuixIcons.Favorites, "收藏")
+                    }
+                },
                 onCheckedChange = { newValue ->
                     checked = newValue
                     if (setState.isNotBlank()) {
@@ -261,6 +304,11 @@ private fun NodeItem(
             ArrowPreference(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
+                endActions = {
+                    IconButton(onClick = { onAddFavorite(node) }) {
+                        Icon(MiuixIcons.Favorites, "收藏")
+                    }
+                },
                 onClick = { onPageClick(node) }
             )
         }
@@ -268,6 +316,11 @@ private fun NodeItem(
             ArrowPreference(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
+                endActions = {
+                    IconButton(onClick = { onAddFavorite(node) }) {
+                        Icon(MiuixIcons.Favorites, "收藏")
+                    }
+                },
                 onClick = {
                     if (node.params.isNullOrEmpty()) {
                         runAction(node, context, shellRunner)
@@ -405,6 +458,37 @@ private fun ActionParamsDialog(
                     onDismiss()
                 },
                 modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun FavoritesScreen(
+    favorites: List<FavoriteItem>,
+    contentPadding: PaddingValues,
+    onRemove: (FavoriteItem) -> Unit,
+) {
+    if (favorites.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(contentPadding)
+        ) {
+            Text(text = "暂无收藏")
+        }
+        return
+    }
+    LazyColumn(contentPadding = contentPadding) {
+        items(favorites, key = { it.key }) { item ->
+            ArrowPreference(
+                title = item.title,
+                summary = item.summary,
+                endActions = {
+                    IconButton(onClick = { onRemove(item) }) {
+                        Icon(MiuixIcons.FavoritesFill, "取消收藏")
+                    }
+                }
             )
         }
     }
