@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.projectkr.shell.core.config.PageConfigReader
 import com.projectkr.shell.core.config.ShellRunner
 import com.projectkr.shell.core.executor.ScriptEnvironment
@@ -63,6 +65,7 @@ import com.projectkr.shell.core.model.NodeInfoBase
 import com.projectkr.shell.core.model.PageMenuOption
 import com.projectkr.shell.core.model.PageNode
 import com.projectkr.shell.core.model.PickerNode
+import com.projectkr.shell.core.model.RunnableNode
 import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
 import com.projectkr.shell.shortcut.ShortcutHelper
@@ -947,6 +950,7 @@ private fun NodeItem(
     onPageClick: (PageNode) -> Unit,
     onAddFavorite: (NodeInfoBase) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     when (node) {
         is SwitchNode -> {
             var checked by remember { mutableStateOf(node.checked) }
@@ -1033,7 +1037,19 @@ private fun NodeItem(
                 },
                 onClick = {
                     if (node.params.isNullOrEmpty()) {
-                        runAction(node, context, shellRunner)
+                        val script = node.setState ?: ""
+                        if (node.shell == RunnableNode.shellModeBgTask) {
+                            scope.launch {
+                                val result = shellRunner.execute(script)
+                                Toast.makeText(
+                                    context,
+                                    result.ifEmpty { "后台任务执行完成" },
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } else {
+                            runAction(node, context, shellRunner)
+                        }
                     } else {
                         onActionClick(node)
                     }
