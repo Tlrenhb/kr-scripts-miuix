@@ -844,7 +844,11 @@ private fun NodeListScreen(
         onRefresh = onRefresh,
         pullToRefreshState = rememberPullToRefreshState()
     ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+    ) {
         SearchBar(
             inputField = {
                 InputField(
@@ -859,9 +863,7 @@ private fun NodeListScreen(
             onExpandedChange = { searchExpanded = it }
         ) {
         }
-        LazyColumn(
-            contentPadding = contentPadding
-        ) {
+        LazyColumn {
             filteredNodes.forEach { node ->
                 when (node) {
                     is GroupNode -> {
