@@ -142,11 +142,6 @@ fun KrScriptApp() {
         delay(1000)
         showSplash = false
     }
-    if (showSplash) {
-        SplashScreen()
-        return
-    }
-
     val favoritesPrefs = context.getSharedPreferences("kr_script_favorites", Context.MODE_PRIVATE)
     val favorites = remember {
         mutableStateListOf<FavoriteItem>().apply {
@@ -169,6 +164,9 @@ fun KrScriptApp() {
     }
 
     MiuixTheme(controller = themeController) {
+        if (showSplash) {
+            SplashScreen()
+        } else {
         Scaffold(
         topBar = {
             TopAppBar(
@@ -260,9 +258,13 @@ fun KrScriptApp() {
         }
     ) { padding ->
         if (showMonitor) {
-            MonitorScreen(onBack = { showMonitor = false })
+            MonitorScreen(
+                onBack = { showMonitor = false },
+                contentPadding = padding
+            )
         } else if (showFileSelector || fileSelectorParamName != null) {
             FileSelectorScreen(
+                contentPadding = padding,
                 onBack = {
                     showFileSelector = false
                     fileSelectorParamName = null
@@ -290,7 +292,10 @@ fun KrScriptApp() {
             1 -> {
                 val url = onlineUrl
                 if (url != null) {
-                    OnlinePageScreen(url = url)
+                    OnlinePageScreen(
+                        url = url,
+                        contentPadding = padding
+                    )
                 } else {
                     NodeListScreen(
                         nodes = currentNodes,
@@ -381,6 +386,7 @@ fun KrScriptApp() {
                 shellRunner = shellRunner,
                 onDismiss = { showPowerMenu = false }
             )
+        }
         }
         }
     }
@@ -564,7 +570,10 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun MonitorScreen(onBack: () -> Unit) {
+private fun MonitorScreen(
+    onBack: () -> Unit,
+    contentPadding: PaddingValues,
+) {
     val context = LocalContext.current
     var cpuFreq by remember { mutableStateOf("读取中...") }
     var battery by remember { mutableStateOf(-1) }
@@ -592,6 +601,7 @@ private fun MonitorScreen(onBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(contentPadding)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -637,6 +647,7 @@ private fun CpuChart(values: List<Float>, modifier: Modifier = Modifier) {
 
 @Composable
 private fun FileSelectorScreen(
+    contentPadding: PaddingValues,
     onBack: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
@@ -647,6 +658,7 @@ private fun FileSelectorScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .padding(contentPadding)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -684,9 +696,8 @@ private fun PowerMenuDialog(
     shellRunner: ShellRunner,
     onDismiss: () -> Unit,
 ) {
-    if (!show) return
     OverlayDialog(
-        show = true,
+        show = show,
         title = "电源菜单",
         onDismissRequest = onDismiss
     ) {
@@ -736,9 +747,14 @@ private fun PowerMenuDialog(
 }
 
 @Composable
-private fun OnlinePageScreen(url: String) {
+private fun OnlinePageScreen(
+    url: String,
+    contentPadding: PaddingValues,
+) {
     AndroidView(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
         factory = { context ->
             WebView(context).apply {
                 webViewClient = WebViewClient()
