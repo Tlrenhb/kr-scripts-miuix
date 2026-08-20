@@ -40,7 +40,7 @@
 ## 进行中 / 待办
 
 - [ ] 移植完整 `ScriptEnvironmen` / `KeepShell`，替换轻量 RootShellRunner
-- [ ] 文件选择器接入 Action 参数（目前是首页独立入口）
+- [x] 文件选择器已接入 Action 参数
 - [ ] CPU / 悬浮监控
 - [ ] 更完整的 PIO 首页仪表盘
 - [ ] 主题、动态取色、深色模式打磨
