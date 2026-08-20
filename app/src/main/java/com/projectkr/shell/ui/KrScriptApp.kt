@@ -1109,17 +1109,17 @@ private fun ActionParamsDialog(
     onOpenFileSelector: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (action == null) return
-    val params = action.params ?: emptyList()
+    val params = action?.params ?: emptyList()
     val states = remember(action) {
         params.map { ParamUiState(it) }
     }
     OverlayDialog(
-        show = true,
-        title = action.title,
-        summary = action.summary.ifEmpty { action.desc },
+        show = action != null,
+        title = action?.title,
+        summary = action?.summary?.ifEmpty { action.desc } ?: "",
         onDismissRequest = onDismiss
     ) {
+        if (action != null) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -1244,6 +1244,7 @@ private fun ActionParamsDialog(
                 },
                 modifier = Modifier.fillMaxWidth()
             )
+        }
         }
     }
 }
