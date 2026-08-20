@@ -13,6 +13,7 @@
 - [x] 添加 `sample.xml`，App 启动后真实解析并展示 Miuix 列表
 - [x] Action 参数弹窗：TextField / Slider / Checkbox / Dropdown / ColorPicker / 文件选择 / 多选
 - [x] 子页面导航（返回栈）
+- [x] PageNode 外链浏览器打开
 - [x] 底部导航（页面 / 关于 / 收藏）
 - [x] 收藏夹（SharedPreferences 持久化）
 - [x] TextNode 多行富文本渲染
