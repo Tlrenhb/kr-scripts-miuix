@@ -68,7 +68,7 @@ class ScriptEnvironment(
             "MAGISK_PATH" to "",
             "PACKAGE_NAME" to context.packageName,
             "PACKAGE_VERSION_NAME" to (packageInfo?.versionName ?: ""),
-            "PACKAGE_VERSION_CODE" to (packageInfo?.versionCode?.toString() ?: "0"),
+            "PACKAGE_VERSION_CODE" to (packageInfo?.longVersionCode?.toString() ?: "0"),
             "APP_USER_ID" to context.applicationInfo.uid.toString(),
             "ROOT_PERMISSION" to "true",
             "TOOLKIT" to "",

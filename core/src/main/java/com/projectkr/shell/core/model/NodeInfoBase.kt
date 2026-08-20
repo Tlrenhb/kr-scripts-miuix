@@ -9,7 +9,7 @@ import java.util.UUID
 
 open class NodeInfoBase(open val currentPageConfigPath: String) : Serializable {
     val pageConfigDir: String = if (currentPageConfigPath.isNotEmpty()) {
-        val dir = File(currentPageConfigPath).parent
+        val dir = File(currentPageConfigPath).parent ?: ""
         if (dir.startsWith("file:/android_asset/")) {
             "file:///android_asset/" + dir.substring("file:/android_asset/".length)
         } else {
