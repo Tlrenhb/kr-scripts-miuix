@@ -41,7 +41,7 @@
 ## 进行中 / 待办
 
 - [x] 移植简化版 `ScriptEnvironment`（executor.sh 环境变量 + 缓存脚本执行）
-- [ ] 移植完整 `KeepShell` / 常驻 Shell
+- [x] 简易 `KeepShellRunner` 常驻 Shell（su/sh + 标记分割输出）
 - [x] 文件选择器已接入 Action 参数
 - [x] 实时 CPU / 电池监控页 + 频率趋势图
 - [x] 悬浮窗监控（Service + Overlay）
