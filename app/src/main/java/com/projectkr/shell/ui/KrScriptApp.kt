@@ -6,6 +6,7 @@ package com.projectkr.shell.ui
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.app.ActivityManager
 import android.os.BatteryManager
@@ -86,8 +87,10 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.ColorPicker
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.*
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
@@ -109,10 +112,7 @@ fun KrScriptApp() {
     val context = LocalContext.current
     val themePrefs = context.getSharedPreferences("kr_script_theme", Context.MODE_PRIVATE)
     var themeMode by remember { mutableStateOf(loadThemeMode(themePrefs)) }
-    val themeController = remember { ThemeController(themeMode) }
-    LaunchedEffect(themeMode) {
-        themeController.colorSchemeMode = themeMode
-    }
+    val themeController = remember(themeMode) { ThemeController(themeMode) }
     fun updateThemeMode(mode: ColorSchemeMode) {
         themeMode = mode
         themePrefs.edit().putString("mode", mode.name).apply()
@@ -298,6 +298,10 @@ fun KrScriptApp() {
                         context = context,
                         shellRunner = shellRunner,
                         isRefreshing = isRefreshing,
+                        onOpenOnline = { url, title ->
+                            onlineUrl = url
+                            onlineTitle = title
+                        },
                         onRefresh = {
                             isRefreshing = true
                             val refreshed = reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
@@ -435,8 +439,8 @@ private fun HomeScreen(
     val availStorage = storageInfo?.availableBytes ?: 0L
     val storageRatio = if (totalStorage > 0) (totalStorage - availStorage).toFloat() / totalStorage else 0f
     val batteryTemp = remember {
-        val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
-        val temp = manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_TEMPERATURE) ?: -1
+        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val temp = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1) ?: -1
         if (temp >= 0) "${temp / 10.0}°C" else "未知"
     }
     val uptime = remember {
@@ -596,46 +600,10 @@ private fun MonitorScreen(onBack: () -> Unit) {
             title = "CPU 频率",
             summary = cpuFreq
         )
-        coreFreqs.forEach { core ->
-            ArrowPreference(
-                title = "核心频率",
-                summary = core
-            )
-        }
         ArrowPreference(
             title = "电池电量",
             summary = if (battery >= 0) "$battery%" else "未知"
         )
-        ArrowPreference(
-            title = "电池温度",
-            summary = batteryTemp
-        )
-        ArrowPreference(
-            title = "已运行时间",
-            summary = uptime
-        )
-        SmallTitle(text = "使用率")
-        LinearProgressIndicator(
-            progress = if (battery >= 0) battery / 100f else 0f,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        Text(text = if (battery >= 0) "电池 $battery%" else "电池 未知")
-        LinearProgressIndicator(
-            progress = ramRatio,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        Text(text = "内存 ${(ramRatio * 100).toInt()}%")
-        LinearProgressIndicator(
-            progress = storageRatio,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        Text(text = "存储 ${(storageRatio * 100).toInt()}%")
         SmallTitle(text = "CPU 频率趋势")
         CpuChart(values = history)
         TextButton(
@@ -844,6 +812,7 @@ private fun NodeListScreen(
     shellRunner: ShellRunner,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
+    onOpenOnline: (String, String) -> Unit,
     onActionClick: (ActionNode) -> Unit,
     onPageClick: (PageNode) -> Unit,
     onAddFavorite: (NodeInfoBase) -> Unit,
@@ -888,6 +857,7 @@ private fun NodeListScreen(
                                 node = child,
                                 context = context,
                                 shellRunner = shellRunner,
+                                onOpenOnline = onOpenOnline,
                                 onActionClick = onActionClick,
                                 onPageClick = onPageClick,
                                 onAddFavorite = onAddFavorite,
@@ -900,6 +870,7 @@ private fun NodeListScreen(
                                 node = node,
                                 context = context,
                                 shellRunner = shellRunner,
+                                onOpenOnline = onOpenOnline,
                                 onActionClick = onActionClick,
                                 onPageClick = onPageClick,
                                 onAddFavorite = onAddFavorite,
@@ -946,6 +917,7 @@ private fun NodeItem(
     node: NodeInfoBase,
     context: Context,
     shellRunner: ShellRunner,
+    onOpenOnline: (String, String) -> Unit,
     onActionClick: (ActionNode) -> Unit,
     onPageClick: (PageNode) -> Unit,
     onAddFavorite: (NodeInfoBase) -> Unit,
@@ -1025,8 +997,7 @@ private fun NodeItem(
                             }
                         }
                         online.isNotBlank() -> {
-                            onlineUrl = online
-                            onlineTitle = node.title
+                            onOpenOnline(online, node.title)
                         }
                         node.pageConfigPath.isNotBlank() -> onPageClick(node)
                         else -> Toast.makeText(context, "此页面没有可打开的内容", Toast.LENGTH_SHORT).show()
