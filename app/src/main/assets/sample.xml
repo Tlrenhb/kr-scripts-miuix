@@ -20,6 +20,11 @@
         <script>echo ok</script>
     </action>
 
+    <action title="带参数动作" summary="会弹出参数表单">
+        <param name="msg" title="消息" value="hello" />
+        <script>echo $msg</script>
+    </action>
+
     <page title="子页面" summary="进入下一个页面">
         <config>file:///android_asset/sample.xml</config>
     </page>
