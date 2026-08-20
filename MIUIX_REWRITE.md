@@ -8,7 +8,14 @@
 - [x] 接入 Miuix 依赖（miuix-ui / miuix-preference / miuix-icons）
 - [x] 建立 `core` 模块，移植核心 Node 模型
 - [x] 建立 `app` 模块，配置 MiuixTheme + Scaffold
-- [x] 初步实现节点列表渲染：
+- [x] 移植 `PageConfigReader`（XML → Node 模型），通过 `ShellRunner` 解耦 Shell
+- [x] 添加轻量 `RootShellRunner`，可执行 `sh` 命令
+- [x] 添加 `sample.xml`，App 启动后真实解析并展示 Miuix 列表
+- [x] 初步交互：
+  - Action 点击执行脚本
+  - Switch 切换执行 setState
+  - Picker 选择执行 setState
+- [x] 节点列表渲染：
   - Page / Action → ArrowPreference
   - Switch → SwitchPreference
   - Picker → OverlayDropdownPreference
@@ -17,9 +24,9 @@
 
 ## 进行中 / 待办
 
-- [ ] 移植 PageConfigReader / ShellExecutor / ScriptEnvironmen
-- [ ] 实现真实 XML 配置解析
-- [ ] 实现 Shell 执行与状态刷新
+- [ ] 移植 `PathAnalysis`（相对路径 / assets / root 文件解析）
+- [ ] 移植 `ScriptEnvironmen` / `KeepShell` / `ExtractAssets`
+- [ ] 实现真实 ROOT Shell 环境（替换轻量 RootShellRunner）
 - [ ] 实现参数表单（TextField / Slider / Checkbox / ColorPicker）
 - [ ] 重写 MainActivity / Splash / ActionPage / 收藏 / 在线页
 - [ ] 主题、动态取色、深色模式打磨
