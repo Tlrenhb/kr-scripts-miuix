@@ -389,6 +389,7 @@ private class ParamUiState(
     val floatValue: MutableState<Float> = mutableStateOf(param.value?.toFloatOrNull() ?: 0f),
     val selectedIndex: MutableState<Int> = mutableStateOf(0),
     val color: MutableState<Color> = mutableStateOf(parseColor(param.value)),
+    val selectedOptions: MutableState<Set<Int>> = mutableStateOf(emptySet()),
 )
 
 @Composable
@@ -478,6 +479,22 @@ private fun ActionParamsDialog(
                             )
                         }
                     }
+                    param.type == "multiple" || param.type == "multi" || param.multiple -> {
+                        val options = param.options ?: emptyList()
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            options.forEachIndexed { optionIndex, option ->
+                                CheckboxPreference(
+                                    title = option.title ?: option.value ?: "",
+                                    checked = optionIndex in states[index].selectedOptions.value,
+                                    onCheckedChange = { checked ->
+                                        val newSet = states[index].selectedOptions.value.toMutableSet()
+                                        if (checked) newSet.add(optionIndex) else newSet.remove(optionIndex)
+                                        states[index].selectedOptions.value = newSet
+                                    }
+                                )
+                            }
+                        }
+                    }
                     else -> {
                         TextField(
                             value = states[index].text.value,
@@ -505,6 +522,10 @@ private fun ActionParamsDialog(
                                 states[index].floatValue.value.toInt().toString()
                             param.type == "color" || param.type == "colour" ->
                                 "#%08X".format(states[index].color.value.toArgb())
+                            param.type == "multiple" || param.type == "multi" || param.multiple ->
+                                states[index].selectedOptions.value
+                                    .mapNotNull { param.options?.getOrNull(it)?.value }
+                                    .joinToString(param.separator)
                             else -> states[index].text.value.text
                         }
                         values[name] = value

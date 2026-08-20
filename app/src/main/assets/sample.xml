@@ -32,7 +32,12 @@
         <param name="enable" title="启用" type="switch" value="1" />
         <param name="color" title="颜色" type="color" value="#FF0000" />
         <param name="file" title="文件" type="file" />
-        <script>echo "$msg $count $mode $enable $color $file"</script>
+        <param name="tags" title="多选" type="multiple" separator=",">
+            <option val="a">标签 A</option>
+            <option val="b">标签 B</option>
+            <option val="c">标签 C</option>
+        </param>
+        <script>echo "$msg $count $mode $enable $color $file $tags"</script>
     </action>
 
     <page title="子页面" summary="进入下一个页面">
