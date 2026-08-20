@@ -4,6 +4,8 @@
 package com.projectkr.shell.ui
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -367,7 +369,16 @@ private fun NodeItem(
                         Icon(MiuixIcons.Favorites, "收藏")
                     }
                 },
-                onClick = { onPageClick(node) }
+                onClick = {
+                    val link = node.link.ifEmpty { node.onlineHtmlPage }
+                    when {
+                        link.isNotBlank() && (link.startsWith("http://") || link.startsWith("https://")) -> {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                        }
+                        node.pageConfigPath.isNotBlank() -> onPageClick(node)
+                        else -> Toast.makeText(context, "此页面没有可打开的内容", Toast.LENGTH_SHORT).show()
+                    }
+                }
             )
         }
         is ActionNode -> {
