@@ -46,8 +46,9 @@ class PageConfigReader(
             return parseConfigXml(pageConfigStream!!)
         } else {
             try {
-                val fileInputStream = openConfig(pageConfig) ?: return ArrayList()
-                pageConfigAbsPath = resolveCurrentPath(pageConfig)
+                val pathAnalysis = PathAnalysis(context, parentDir)
+                val fileInputStream = pathAnalysis.parsePath(pageConfig) ?: return ArrayList()
+                pageConfigAbsPath = pathAnalysis.getCurrentAbsPath()
                 return parseConfigXml(fileInputStream)
             } catch (ex: Exception) {
                 Handler(Looper.getMainLooper()).post {
@@ -59,20 +60,6 @@ class PageConfigReader(
         return null
     }
 
-
-    private fun openConfig(path: String): InputStream? {
-        val assetsPrefix = "file:///android_asset/"
-        return if (path.startsWith(assetsPrefix)) {
-            context.assets.open(path.substring(assetsPrefix.length))
-        } else {
-            val file = java.io.File(path)
-            if (file.exists() && file.canRead()) file.inputStream() else null
-        }
-    }
-
-    private fun resolveCurrentPath(path: String): String {
-        return path
-    }
 
     private fun parseConfigXml(fileInputStream: InputStream): ArrayList<NodeInfoBase>? {
         try {
