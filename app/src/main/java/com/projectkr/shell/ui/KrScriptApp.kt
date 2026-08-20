@@ -637,7 +637,7 @@ private fun CpuChart(values: List<Float>, modifier: Modifier = Modifier) {
         values.forEachIndexed { index, value ->
             val barHeight = (value / max) * size.height
             drawRect(
-                color = Color(0xFF3482FF),
+                color = MiuixTheme.colorScheme.primary,
                 topLeft = Offset(index * step, size.height - barHeight),
                 size = Size(step * 0.7f, barHeight)
             )
