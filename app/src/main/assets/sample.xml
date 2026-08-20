@@ -22,7 +22,13 @@
 
     <action title="带参数动作" summary="会弹出参数表单">
         <param name="msg" title="消息" value="hello" />
-        <script>echo $msg</script>
+        <param name="count" title="次数" type="seekbar" min="1" max="10" value="3" />
+        <param name="mode" title="模式" type="select">
+            <option val="fast">快速</option>
+            <option val="safe">安全</option>
+        </param>
+        <param name="enable" title="启用" type="switch" value="1" />
+        <script>echo "$msg $count $mode $enable"</script>
     </action>
 
     <page title="子页面" summary="进入下一个页面">

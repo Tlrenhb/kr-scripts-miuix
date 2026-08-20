@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.projectkr.shell.core.config.PageConfigReader
 import com.projectkr.shell.core.config.ShellRunner
 import com.projectkr.shell.core.model.ActionNode
+import com.projectkr.shell.core.model.ActionParamInfo
 import com.projectkr.shell.core.model.GroupNode
 import com.projectkr.shell.core.model.NodeInfoBase
 import com.projectkr.shell.core.model.PageNode
@@ -37,7 +39,9 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
+import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 
 @Composable
@@ -197,6 +201,14 @@ private fun NodeItem(
     }
 }
 
+private class ParamUiState(
+    val param: ActionParamInfo,
+    val text: MutableState<TextFieldValue> = mutableStateOf(TextFieldValue(param.value ?: "")),
+    val checked: MutableState<Boolean> = mutableStateOf(param.value == "1" || param.value == "true"),
+    val floatValue: MutableState<Float> = mutableStateOf(param.value?.toFloatOrNull() ?: 0f),
+    val selectedIndex: MutableState<Int> = mutableStateOf(0),
+)
+
 @Composable
 private fun ActionParamsDialog(
     action: ActionNode?,
@@ -207,7 +219,7 @@ private fun ActionParamsDialog(
     if (action == null) return
     val params = action.params ?: emptyList()
     val states = remember(action) {
-        params.map { mutableStateOf(TextFieldValue(it.value ?: "")) }
+        params.map { ParamUiState(it) }
     }
 
     OverlayDialog(
@@ -221,13 +233,46 @@ private fun ActionParamsDialog(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             params.forEachIndexed { index, param ->
-                TextField(
-                    value = states[index].value,
-                    onValueChange = { states[index].value = it },
-                    label = param.title ?: param.name ?: "",
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                when {
+                    param.type == "switch" || param.type == "boolean" || param.type == "checkbox" -> {
+                        CheckboxPreference(
+                            title = param.title ?: param.name ?: "",
+                            summary = param.desc,
+                            checked = states[index].checked.value,
+                            onCheckedChange = { states[index].checked.value = it }
+                        )
+                    }
+                    param.type == "select" || param.type == "dropdown" || param.options != null -> {
+                        val options = param.options?.map { it.toString() } ?: emptyList()
+                        OverlayDropdownPreference(
+                            title = param.title ?: param.name ?: "",
+                            summary = param.desc,
+                            items = options,
+                            selectedIndex = states[index].selectedIndex.value,
+                            onSelectedIndexChange = { states[index].selectedIndex.value = it }
+                        )
+                    }
+                    param.type == "seekbar" || param.type == "slider" || param.type == "range" -> {
+                        val min = if (param.min == Int.MIN_VALUE) 0f else param.min.toFloat()
+                        val max = if (param.max == Int.MAX_VALUE) 100f else param.max.toFloat()
+                        SliderPreference(
+                            title = param.title ?: param.name ?: "",
+                            summary = param.desc,
+                            value = states[index].floatValue.value,
+                            onValueChange = { states[index].floatValue.value = it },
+                            valueRange = min..max
+                        )
+                    }
+                    else -> {
+                        TextField(
+                            value = states[index].text.value,
+                            onValueChange = { states[index].text.value = it },
+                            label = param.title ?: param.name ?: "",
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
             }
             TextButton(
                 text = "确定",
@@ -235,13 +280,21 @@ private fun ActionParamsDialog(
                     val values = mutableMapOf<String, String>()
                     params.forEachIndexed { index, param ->
                         val name = param.name ?: ""
-                        if (name.isNotEmpty()) {
-                            values[name] = states[index].value.text
+                        if (name.isEmpty()) return@forEachIndexed
+                        val value = when {
+                            param.type == "switch" || param.type == "boolean" || param.type == "checkbox" ->
+                                if (states[index].checked.value) "1" else "0"
+                            param.type == "select" || param.type == "dropdown" || param.options != null ->
+                                param.options?.getOrNull(states[index].selectedIndex.value)?.value ?: ""
+                            param.type == "seekbar" || param.type == "slider" || param.type == "range" ->
+                                states[index].floatValue.value.toInt().toString()
+                            else -> states[index].text.value.text
                         }
+                        values[name] = value
                     }
                     var script = action.setState ?: ""
                     values.forEach { (key, value) ->
-                        script = script.replace("\$$key", value)
+                        script = script.replace("\$key", value)
                     }
                     val result = shellRunner.execute(script)
                     if (result.isNotBlank()) {
