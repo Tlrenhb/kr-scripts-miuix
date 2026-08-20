@@ -12,6 +12,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.os.SystemClock
 import android.provider.Settings
 import android.webkit.WebView
 import java.io.File
@@ -375,6 +376,16 @@ private fun HomeScreen(
             0L
         }
     }
+    val batteryTemp = remember {
+        val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        val temp = manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_TEMPERATURE) ?: -1
+        if (temp >= 0) "${temp / 10.0}°C" else "未知"
+    }
+    val uptime = remember {
+        val millis = SystemClock.elapsedRealtime()
+        val seconds = millis / 1000
+        "${seconds / 3600}h ${(seconds % 3600) / 60}m"
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -409,6 +420,14 @@ private fun HomeScreen(
         ArrowPreference(
             title = "电池电量",
             summary = if (battery >= 0) "$battery%" else "未知"
+        )
+        ArrowPreference(
+            title = "电池温度",
+            summary = batteryTemp
+        )
+        ArrowPreference(
+            title = "已运行时间",
+            summary = uptime
         )
         SmallTitle(text = "快捷操作")
         TextButton(
@@ -494,6 +513,14 @@ private fun MonitorScreen(onBack: () -> Unit) {
         ArrowPreference(
             title = "电池电量",
             summary = if (battery >= 0) "$battery%" else "未知"
+        )
+        ArrowPreference(
+            title = "电池温度",
+            summary = batteryTemp
+        )
+        ArrowPreference(
+            title = "已运行时间",
+            summary = uptime
         )
         SmallTitle(text = "CPU 频率趋势")
         CpuChart(values = history)
