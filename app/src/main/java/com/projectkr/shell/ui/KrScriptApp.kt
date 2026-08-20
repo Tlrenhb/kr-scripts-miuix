@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -362,6 +363,7 @@ private class ParamUiState(
     val checked: MutableState<Boolean> = mutableStateOf(param.value == "1" || param.value == "true"),
     val floatValue: MutableState<Float> = mutableStateOf(param.value?.toFloatOrNull() ?: 0f),
     val selectedIndex: MutableState<Int> = mutableStateOf(0),
+    val color: MutableState<Color> = mutableStateOf(parseColor(param.value)),
 )
 
 @Composable
@@ -418,6 +420,12 @@ private fun ActionParamsDialog(
                             valueRange = min..max
                         )
                     }
+                    param.type == "color" || param.type == "colour" -> {
+                        ColorPicker(
+                            color = states[index].color.value,
+                            onColorChanged = { states[index].color.value = it }
+                        )
+                    }
                     else -> {
                         TextField(
                             value = states[index].text.value,
@@ -443,6 +451,8 @@ private fun ActionParamsDialog(
                                 param.options?.getOrNull(states[index].selectedIndex.value)?.value ?: ""
                             param.type == "seekbar" || param.type == "slider" || param.type == "range" ->
                                 states[index].floatValue.value.toInt().toString()
+                            param.type == "color" || param.type == "colour" ->
+                                "#%08X".format(states[index].color.value.toArgb())
                             else -> states[index].text.value.text
                         }
                         values[name] = value
@@ -491,6 +501,15 @@ private fun FavoritesScreen(
                 }
             )
         }
+    }
+}
+
+private fun parseColor(value: String?): Color {
+    if (value.isNullOrBlank()) return Color.Black
+    return try {
+        Color(android.graphics.Color.parseColor(value))
+    } catch (e: Exception) {
+        Color.Black
     }
 }
 
