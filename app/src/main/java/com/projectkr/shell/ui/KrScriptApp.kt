@@ -65,7 +65,7 @@ import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
 import com.projectkr.shell.shortcut.ShortcutHelper
 import com.projectkr.shell.service.FloatMonitorService
-import com.projectkr.shell.shell.RootShellRunner
+import com.projectkr.shell.shell.KeepShellRunner
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
@@ -110,7 +110,7 @@ fun KrScriptApp() {
         themePrefs.edit().putString("mode", mode.name).apply()
     }
 
-    val shellRunner = remember { ScriptEnvironment(context, RootShellRunner()) }
+    val shellRunner = remember { ScriptEnvironment(context, KeepShellRunner()) }
     val reader = remember { PageConfigReader(context, shellRunner) }
     val rootNodes = remember {
         reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
