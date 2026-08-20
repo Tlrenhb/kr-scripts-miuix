@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,6 +51,7 @@ import com.projectkr.shell.core.model.PageNode
 import com.projectkr.shell.core.model.PickerNode
 import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
+import com.projectkr.shell.shortcut.ShortcutHelper
 import com.projectkr.shell.shell.RootShellRunner
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
@@ -225,6 +227,10 @@ fun KrScriptApp() {
                 onRemove = {
                     favorites.remove(it)
                     saveFavorites()
+                },
+                onCreateShortcut = { item ->
+                    ShortcutHelper.addShortcut(context, item.key, item.title)
+                    Toast.makeText(context, "已请求创建快捷方式", Toast.LENGTH_SHORT).show()
                 }
             )
         }
@@ -627,6 +633,7 @@ private fun FavoritesScreen(
     favorites: List<FavoriteItem>,
     contentPadding: PaddingValues,
     onRemove: (FavoriteItem) -> Unit,
+    onCreateShortcut: (FavoriteItem) -> Unit,
 ) {
     if (favorites.isEmpty()) {
         Column(
@@ -644,8 +651,13 @@ private fun FavoritesScreen(
                 title = item.title,
                 summary = item.summary,
                 endActions = {
-                    IconButton(onClick = { onRemove(item) }) {
-                        Icon(MiuixIcons.FavoritesFill, "取消收藏")
+                    Row {
+                        IconButton(onClick = { onCreateShortcut(item) }) {
+                            Icon(MiuixIcons.Add, "创建快捷方式")
+                        }
+                        IconButton(onClick = { onRemove(item) }) {
+                            Icon(MiuixIcons.FavoritesFill, "取消收藏")
+                        }
                     }
                 }
             )
