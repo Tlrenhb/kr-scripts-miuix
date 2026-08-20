@@ -78,7 +78,26 @@ fun KrScriptApp() {
     var currentTitle by remember { mutableStateOf("KrScript Miuix") }
     var selectedTab by remember { mutableStateOf(0) }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
-    val favorites = remember { mutableStateListOf<FavoriteItem>() }
+    val favoritesPrefs = context.getSharedPreferences("kr_script_favorites", Context.MODE_PRIVATE)
+    val favorites = remember {
+        mutableStateListOf<FavoriteItem>().apply {
+            val saved = favoritesPrefs.getStringSet("favorites", emptySet()) ?: emptySet()
+            saved.forEach { line ->
+                val parts = line.split("|", limit = 3)
+                if (parts.size == 3) {
+                    add(FavoriteItem(parts[0], parts[1], parts[2]))
+                }
+            }
+        }
+    }
+    fun saveFavorites() {
+        favoritesPrefs.edit()
+            .putStringSet(
+                "favorites",
+                favorites.map { "${it.key}|${it.title}|${it.summary}" }.toSet()
+            )
+            .apply()
+    }
 
     Scaffold(
         topBar = {
@@ -140,6 +159,7 @@ fun KrScriptApp() {
                                 summary = node.summary.ifEmpty { node.desc }
                             )
                         )
+                        saveFavorites()
                         Toast.makeText(context, "已收藏", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, "已在收藏中", Toast.LENGTH_SHORT).show()
@@ -171,7 +191,10 @@ fun KrScriptApp() {
             FavoritesScreen(
                 favorites = favorites,
                 contentPadding = padding,
-                onRemove = { favorites.remove(it) }
+                onRemove = {
+                    favorites.remove(it)
+                    saveFavorites()
+                }
             )
         }
     }
