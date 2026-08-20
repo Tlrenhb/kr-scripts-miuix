@@ -22,6 +22,7 @@
 - [x] 页面菜单选项（TopBar 操作）
 - [x] 页面搜索（SearchBar）
 - [x] 页面下拉刷新（PullToRefresh）
+- [x] 后台任务模式（bg-task 异步执行）
 - [x] PageNode 外链浏览器打开
 - [x] 在线页 WebView
 - [x] 底部导航（首页 / 页面 / 收藏 / 关于）
