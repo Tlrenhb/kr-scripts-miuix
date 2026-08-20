@@ -73,6 +73,7 @@ import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
+import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SearchBar
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -374,19 +375,25 @@ private fun HomeScreen(
             }
         }
     }
-    val totalRam = remember {
+    val memInfo = remember {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-        val memInfo = ActivityManager.MemoryInfo()
-        manager?.getMemoryInfo(memInfo)
-        memInfo.totalMem
+        val info = ActivityManager.MemoryInfo()
+        manager?.getMemoryInfo(info)
+        info
     }
-    val totalStorage = remember {
+    val totalRam = memInfo.totalMem
+    val availRam = memInfo.availMem
+    val ramRatio = if (totalRam > 0) (totalRam - availRam).toFloat() / totalRam else 0f
+    val storageInfo = remember {
         try {
-            StatFs(Environment.getDataDirectory().path).totalBytes
+            StatFs(Environment.getDataDirectory().path)
         } catch (e: Exception) {
-            0L
+            null
         }
     }
+    val totalStorage = storageInfo?.totalBytes ?: 0L
+    val availStorage = storageInfo?.availableBytes ?: 0L
+    val storageRatio = if (totalStorage > 0) (totalStorage - availStorage).toFloat() / totalStorage else 0f
     val batteryTemp = remember {
         val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
         val temp = manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_TEMPERATURE) ?: -1
@@ -446,6 +453,28 @@ private fun HomeScreen(
             title = "已运行时间",
             summary = uptime
         )
+        SmallTitle(text = "使用率")
+        LinearProgressIndicator(
+            progress = if (battery >= 0) battery / 100f else 0f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+        Text(text = if (battery >= 0) "电池 $battery%" else "电池 未知")
+        LinearProgressIndicator(
+            progress = ramRatio,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+        Text(text = "内存 ${(ramRatio * 100).toInt()}%")
+        LinearProgressIndicator(
+            progress = storageRatio,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+        Text(text = "存储 ${(storageRatio * 100).toInt()}%")
         SmallTitle(text = "快捷操作")
         TextButton(
             text = "打开电源菜单",
@@ -545,6 +574,28 @@ private fun MonitorScreen(onBack: () -> Unit) {
             title = "已运行时间",
             summary = uptime
         )
+        SmallTitle(text = "使用率")
+        LinearProgressIndicator(
+            progress = if (battery >= 0) battery / 100f else 0f,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+        Text(text = if (battery >= 0) "电池 $battery%" else "电池 未知")
+        LinearProgressIndicator(
+            progress = ramRatio,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+        Text(text = "内存 ${(ramRatio * 100).toInt()}%")
+        LinearProgressIndicator(
+            progress = storageRatio,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+        )
+        Text(text = "存储 ${(storageRatio * 100).toInt()}%")
         SmallTitle(text = "CPU 频率趋势")
         CpuChart(values = history)
         TextButton(
