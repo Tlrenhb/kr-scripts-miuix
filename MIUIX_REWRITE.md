@@ -33,7 +33,8 @@
 - [ ] 移植 `ScriptEnvironmen` / `KeepShell` / `ExtractAssets`
 - [ ] 实现真实 ROOT Shell 环境（替换轻量 RootShellRunner，当前已支持 sh + su fallback）
 - [ ] 参数表单基本完整，剩余特殊类型按需补充
-- [ ] 在线页 / Splash / 快捷方式
+- [x] Splash 启动页
+- [ ] 在线页 / 快捷方式
 - [ ] 主题、动态取色、深色模式打磨
 - [ ] 在 ROOT 设备上回归测试
 
