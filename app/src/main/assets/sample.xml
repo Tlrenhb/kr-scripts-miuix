@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kr-script>
+    <text title="这是一个 Miuix 重写示例">
+        <summary>由 PageConfigReader 解析 XML 生成</summary>
+    </text>
+
+    <group title="常用工具">
+        <switch title="示例开关" summary="SwitchPreference">
+            <get>echo 1</get>
+            <set>echo $state</set>
+        </switch>
+
+        <picker title="示例选择器" summary="OverlayDropdownPreference">
+            <option val="a">选项 A</option>
+            <option val="b">选项 B</option>
+        </picker>
+    </group>
+
+    <action title="执行动作" summary="ArrowPreference">
+        <script>echo ok</script>
+    </action>
+
+    <page title="子页面" summary="进入下一个页面">
+        <config>file:///android_asset/sample.xml</config>
+    </page>
+</kr-script>

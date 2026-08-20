@@ -11,6 +11,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.projectkr.shell.core.config.PageConfigReader
+import com.projectkr.shell.core.config.ShellRunner
 import com.projectkr.shell.core.model.ActionNode
 import com.projectkr.shell.core.model.GroupNode
 import com.projectkr.shell.core.model.NodeInfoBase
@@ -28,7 +31,13 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 
 @Composable
 fun KrScriptApp() {
-    val nodes = remember { sampleNodes() }
+    val context = LocalContext.current
+    val nodes = remember {
+        val reader = PageConfigReader(context, object : ShellRunner {
+            override fun execute(script: String): String = "1"
+        })
+        reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
+    }
     Scaffold(
         topBar = {
             TopAppBar(title = "KrScript Miuix")
