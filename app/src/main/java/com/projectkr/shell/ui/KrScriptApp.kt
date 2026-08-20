@@ -4,6 +4,7 @@
 package com.projectkr.shell.ui
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.Intent
 import android.net.Uri
 import android.app.ActivityManager
@@ -76,6 +77,9 @@ import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.ThemeController
 
 private data class FavoriteItem(
     val key: String,
@@ -86,6 +90,17 @@ private data class FavoriteItem(
 @Composable
 fun KrScriptApp() {
     val context = LocalContext.current
+    val themePrefs = context.getSharedPreferences("kr_script_theme", Context.MODE_PRIVATE)
+    var themeMode by remember { mutableStateOf(loadThemeMode(themePrefs)) }
+    val themeController = remember { ThemeController(themeMode) }
+    LaunchedEffect(themeMode) {
+        themeController.colorSchemeMode = themeMode
+    }
+    fun updateThemeMode(mode: ColorSchemeMode) {
+        themeMode = mode
+        themePrefs.edit().putString("mode", mode.name).apply()
+    }
+
     val shellRunner = remember { RootShellRunner() }
     val reader = remember { PageConfigReader(context, shellRunner) }
     val rootNodes = remember {
@@ -133,7 +148,8 @@ fun KrScriptApp() {
             .apply()
     }
 
-    Scaffold(
+    MiuixTheme(controller = themeController) {
+        Scaffold(
         topBar = {
             TopAppBar(
                 title = when {
@@ -292,7 +308,11 @@ fun KrScriptApp() {
                     Toast.makeText(context, "已请求创建快捷方式", Toast.LENGTH_SHORT).show()
                 }
             )
-            else -> AboutScreen(contentPadding = padding)
+            else -> AboutScreen(
+                contentPadding = padding,
+                themeMode = themeMode,
+                onThemeModeChange = ::updateThemeMode
+            )
         }
             PowerMenuDialog(
                 show = showPowerMenu,
@@ -300,6 +320,7 @@ fun KrScriptApp() {
                 shellRunner = shellRunner,
                 onDismiss = { showPowerMenu = false }
             )
+        }
         }
     }
 }
@@ -521,7 +542,14 @@ private fun SplashScreen() {
 }
 
 @Composable
-private fun AboutScreen(contentPadding: PaddingValues) {
+private fun AboutScreen(
+    contentPadding: PaddingValues,
+    themeMode: ColorSchemeMode,
+    onThemeModeChange: (ColorSchemeMode) -> Unit,
+) {
+    val modes = ColorSchemeMode.entries
+    val labels = listOf("跟随系统", "浅色", "深色", "动态取色-跟随系统", "动态取色-浅色", "动态取色-深色")
+    val selectedIndex = modes.indexOf(themeMode).coerceAtLeast(0)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -535,6 +563,16 @@ private fun AboutScreen(contentPadding: PaddingValues) {
         )
         Text(
             text = "使用 Compose + Miuix 重写 kr-scripts 的示例工程。",
+        )
+        SmallTitle(text = "主题")
+        OverlayDropdownPreference(
+            title = "主题模式",
+            summary = labels.getOrElse(selectedIndex) { "跟随系统" },
+            items = labels,
+            selectedIndex = selectedIndex,
+            onSelectedIndexChange = { index ->
+                modes.getOrNull(index)?.let(onThemeModeChange)
+            }
         )
     }
 }
@@ -906,6 +944,16 @@ private fun FavoritesScreen(
                 }
             )
         }
+    }
+}
+
+private fun loadThemeMode(prefs: SharedPreferences): ColorSchemeMode {
+    val name = prefs.getString("mode", ColorSchemeMode.System.name)
+        ?: ColorSchemeMode.System.name
+    return try {
+        ColorSchemeMode.valueOf(name)
+    } catch (e: Exception) {
+        ColorSchemeMode.System
     }
 }
 
