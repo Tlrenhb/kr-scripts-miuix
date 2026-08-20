@@ -59,3 +59,8 @@
 - AGP 9.3.1
 - Compose BOM 2025.06.01
 - Miuix 0.9.4-rc01
+
+## CI
+
+- [x] 已添加 GitHub Actions Android 构建流程（`.github/workflows/android-build.yml`）
+- [ ] 等待 Actions 首次构建通过
