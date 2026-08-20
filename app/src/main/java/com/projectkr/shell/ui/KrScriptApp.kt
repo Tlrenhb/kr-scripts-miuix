@@ -6,6 +6,8 @@ package com.projectkr.shell.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,6 +38,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import com.projectkr.shell.core.config.PageConfigReader
 import com.projectkr.shell.core.config.ShellRunner
@@ -84,6 +87,8 @@ fun KrScriptApp() {
     var currentNodes by remember { mutableStateOf(rootNodes) }
     var currentTitle by remember { mutableStateOf("KrScript Miuix") }
     var selectedTab by remember { mutableStateOf(0) }
+    var onlineUrl by remember { mutableStateOf<String?>(null) }
+    var onlineTitle by remember { mutableStateOf("在线页面") }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
@@ -119,13 +124,17 @@ fun KrScriptApp() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = currentTitle,
+                title = if (onlineUrl != null) onlineTitle else currentTitle,
                 navigationIcon = {
-                    if (pageStack.isNotEmpty() && selectedTab == 0) {
+                    if ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 0) {
                         IconButton(onClick = {
-                            val previous = pageStack.removeAt(pageStack.lastIndex)
-                            currentNodes = previous.second
-                            currentTitle = previous.first
+                            if (onlineUrl != null) {
+                                onlineUrl = null
+                            } else {
+                                val previous = pageStack.removeAt(pageStack.lastIndex)
+                                currentNodes = previous.second
+                                currentTitle = previous.first
+                            }
                         }) {
                             Icon(
                                 imageVector = MiuixIcons.Back,
@@ -160,6 +169,10 @@ fun KrScriptApp() {
         }
     ) { padding ->
         if (selectedTab == 0) {
+            val url = onlineUrl
+            if (url != null) {
+                OnlinePageScreen(url = url)
+            } else {
             NodeListScreen(
                 nodes = currentNodes,
                 contentPadding = padding,
@@ -196,12 +209,13 @@ fun KrScriptApp() {
                     }
                 }
             )
-            ActionParamsDialog(
-                action = actionForParams,
-                context = context,
-                shellRunner = shellRunner,
-                onDismiss = { actionForParams = null }
-            )
+                ActionParamsDialog(
+                    action = actionForParams,
+                    context = context,
+                    shellRunner = shellRunner,
+                    onDismiss = { actionForParams = null }
+                )
+            }
         } else if (selectedTab == 1) {
             AboutScreen(contentPadding = padding)
         } else {
@@ -215,6 +229,20 @@ fun KrScriptApp() {
             )
         }
     }
+}
+
+@Composable
+private fun OnlinePageScreen(url: String) {
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { context ->
+            WebView(context).apply {
+                webViewClient = WebViewClient()
+                settings.javaScriptEnabled = true
+                loadUrl(url)
+            }
+        }
+    )
 }
 
 @Composable
@@ -370,10 +398,15 @@ private fun NodeItem(
                     }
                 },
                 onClick = {
-                    val link = node.link.ifEmpty { node.onlineHtmlPage }
+                    val link = node.link
+                    val online = node.onlineHtmlPage
                     when {
                         link.isNotBlank() && (link.startsWith("http://") || link.startsWith("https://")) -> {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                        }
+                        online.isNotBlank() -> {
+                            onlineUrl = online
+                            onlineTitle = node.title
                         }
                         node.pageConfigPath.isNotBlank() -> onPageClick(node)
                         else -> Toast.makeText(context, "此页面没有可打开的内容", Toast.LENGTH_SHORT).show()

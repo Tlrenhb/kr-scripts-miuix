@@ -43,4 +43,8 @@
     <page title="子页面" summary="进入下一个页面">
         <config>file:///android_asset/sample.xml</config>
     </page>
+
+    <page title="在线页面" summary="WebView 加载">
+        <html>https://example.com</html>
+    </page>
 </kr-script>
