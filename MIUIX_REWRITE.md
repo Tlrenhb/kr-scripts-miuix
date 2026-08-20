@@ -14,7 +14,7 @@
 - [x] Action 参数弹窗：TextField / Slider / Checkbox / Dropdown / ColorPicker
 - [x] 子页面导航（返回栈）
 - [x] 底部导航（页面 / 关于 / 收藏）
-- [x] 收藏夹（内存版）
+- [x] 收藏夹（SharedPreferences 持久化）
 - [x] TextNode 多行富文本渲染
 - [x] 初步交互：
   - Action 点击执行脚本
@@ -33,7 +33,7 @@
 - [ ] 移植 `ScriptEnvironmen` / `KeepShell` / `ExtractAssets`
 - [ ] 实现真实 ROOT Shell 环境（替换轻量 RootShellRunner，当前已支持 sh + su fallback）
 - [ ] 继续完善参数表单（多选 / 文件选择）
-- [ ] 收藏持久化 / 在线页 / 文件选择器 / Splash
+- [ ] 在线页 / 文件选择器 / Splash
 - [ ] 主题、动态取色、深色模式打磨
 - [ ] 在 ROOT 设备上回归测试
 
