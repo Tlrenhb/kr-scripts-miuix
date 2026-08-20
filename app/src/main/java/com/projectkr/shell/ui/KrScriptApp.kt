@@ -3,6 +3,8 @@
 
 package com.projectkr.shell.ui
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,15 +15,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.shell.core.config.PageConfigReader
-import com.projectkr.shell.shell.RootShellRunner
+import com.projectkr.shell.core.config.ShellRunner
 import com.projectkr.shell.core.model.ActionNode
 import com.projectkr.shell.core.model.GroupNode
 import com.projectkr.shell.core.model.NodeInfoBase
 import com.projectkr.shell.core.model.PageNode
 import com.projectkr.shell.core.model.PickerNode
-import com.projectkr.shell.core.model.SelectItem
 import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
+import com.projectkr.shell.shell.RootShellRunner
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -32,8 +34,9 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 @Composable
 fun KrScriptApp() {
     val context = LocalContext.current
+    val shellRunner = remember { RootShellRunner() }
     val nodes = remember {
-        val reader = PageConfigReader(context, RootShellRunner())
+        val reader = PageConfigReader(context, shellRunner)
         reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
     }
     Scaffold(
@@ -41,7 +44,12 @@ fun KrScriptApp() {
             TopAppBar(title = "KrScript Miuix")
         }
     ) { padding ->
-        NodeListScreen(nodes = nodes, contentPadding = padding)
+        NodeListScreen(
+            nodes = nodes,
+            contentPadding = padding,
+            context = context,
+            shellRunner = shellRunner,
+        )
     }
 }
 
@@ -49,6 +57,8 @@ fun KrScriptApp() {
 private fun NodeListScreen(
     nodes: List<NodeInfoBase>,
     contentPadding: PaddingValues,
+    context: Context,
+    shellRunner: ShellRunner,
 ) {
     LazyColumn(
         contentPadding = contentPadding
@@ -60,12 +70,20 @@ private fun NodeListScreen(
                         SmallTitle(text = node.title)
                     }
                     items(node.children, key = { it.index }) { child ->
-                        NodeItem(child)
+                        NodeItem(
+                            node = child,
+                            context = context,
+                            shellRunner = shellRunner,
+                        )
                     }
                 }
                 else -> {
                     item(key = node.index) {
-                        NodeItem(node)
+                        NodeItem(
+                            node = node,
+                            context = context,
+                            shellRunner = shellRunner,
+                        )
                     }
                 }
             }
@@ -74,40 +92,79 @@ private fun NodeListScreen(
 }
 
 @Composable
-private fun NodeItem(node: NodeInfoBase) {
+private fun NodeItem(
+    node: NodeInfoBase,
+    context: Context,
+    shellRunner: ShellRunner,
+) {
     when (node) {
         is SwitchNode -> {
             var checked by remember { mutableStateOf(node.checked) }
+            val setState = node.setState ?: ""
             SwitchPreference(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
                 checked = checked,
-                onCheckedChange = { checked = it }
+                onCheckedChange = { newValue ->
+                    checked = newValue
+                    if (setState.isNotBlank()) {
+                        val result = shellRunner.execute(
+                            setState.replace("\$state", if (newValue) "1" else "0")
+                        )
+                        if (result.isNotBlank()) {
+                            Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             )
         }
         is PickerNode -> {
             val options = node.options?.map { it.toString() } ?: emptyList()
             var selectedIndex by remember { mutableStateOf(0) }
+            val setState = node.setState ?: ""
             OverlayDropdownPreference(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
                 items = options,
                 selectedIndex = selectedIndex,
-                onSelectedIndexChange = { selectedIndex = it }
+                onSelectedIndexChange = { index ->
+                    selectedIndex = index
+                    val selectedValue = node.options?.getOrNull(index)?.value ?: ""
+                    if (setState.isNotBlank()) {
+                        val result = shellRunner.execute(
+                            setState.replace("\$state", selectedValue)
+                        )
+                        if (result.isNotBlank()) {
+                            Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
             )
         }
         is PageNode -> {
             ArrowPreference(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
-                onClick = { /* TODO: navigate to sub page */ }
+                onClick = {
+                    Toast.makeText(context, "TODO: 子页面跳转", Toast.LENGTH_SHORT).show()
+                }
             )
         }
         is ActionNode -> {
             ArrowPreference(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
-                onClick = { /* TODO: execute action */ }
+                onClick = {
+                    val script = node.setState ?: ""
+                    if (script.isNotBlank()) {
+                        val result = shellRunner.execute(script)
+                        Toast.makeText(
+                            context,
+                            result.ifEmpty { "执行完成" },
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
             )
         }
         is TextNode -> {
@@ -120,41 +177,4 @@ private fun NodeItem(node: NodeInfoBase) {
             )
         }
     }
-}
-
-private fun sampleNodes(): List<NodeInfoBase> {
-    val group = GroupNode("")
-    group.title = "常用工具"
-    group.children.add(
-        SwitchNode("").apply {
-            title = "示例开关"
-            summary = "这是一个 Miuix SwitchPreference"
-            checked = true
-        }
-    )
-    group.children.add(
-        PickerNode("").apply {
-            title = "示例选择器"
-            summary = "这是一个 Miuix OverlayDropdownPreference"
-            options = arrayListOf(
-                SelectItem().apply { title = "选项 A"; value = "a" },
-                SelectItem().apply { title = "选项 B"; value = "b" }
-            )
-        }
-    )
-    return listOf(
-        PageNode("").apply {
-            title = "子页面"
-            summary = "进入下一个页面"
-        },
-        group,
-        ActionNode("").apply {
-            title = "执行动作"
-            summary = "运行 Shell 脚本"
-        },
-        TextNode("").apply {
-            title = "说明文字"
-            summary = "用于展示说明信息"
-        }
-    )
 }
