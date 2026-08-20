@@ -2,6 +2,8 @@
 <kr-script>
     <text title="这是一个 Miuix 重写示例">
         <summary>由 PageConfigReader 解析 XML 生成</summary>
+        <slice bold="true" size="16">第一行：加粗文本</slice>
+        <slice italic="true">第二行：斜体文本</slice>
     </text>
 
     <group title="常用工具">

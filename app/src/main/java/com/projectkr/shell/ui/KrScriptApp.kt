@@ -19,9 +19,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.projectkr.shell.core.config.PageConfigReader
 import com.projectkr.shell.core.config.ShellRunner
 import com.projectkr.shell.core.model.ActionNode
@@ -39,6 +45,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
@@ -228,7 +235,21 @@ private fun NodeItem(
             )
         }
         is TextNode -> {
-            SmallTitle(text = node.title)
+            Column {
+                if (node.title.isNotBlank()) {
+                    SmallTitle(text = node.title)
+                }
+                node.rows.forEach { row ->
+                    Text(
+                        text = row.text,
+                        fontSize = if (row.size > 0) row.size.sp else TextUnit.Unspecified,
+                        fontWeight = if (row.bold) FontWeight.Bold else null,
+                        fontStyle = if (row.italic) FontStyle.Italic else null,
+                        textDecoration = if (row.underline) TextDecoration.Underline else null,
+                        color = if (row.color != -1) Color(row.color) else Color.Unspecified
+                    )
+                }
+            }
         }
         else -> {
             ArrowPreference(
