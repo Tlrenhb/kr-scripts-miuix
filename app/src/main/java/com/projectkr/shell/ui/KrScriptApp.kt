@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -35,6 +37,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -427,12 +431,19 @@ private fun MonitorScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var cpuFreq by remember { mutableStateOf("读取中...") }
     var battery by remember { mutableStateOf(-1) }
+    val history = remember { mutableStateListOf<Float>() }
     LaunchedEffect(Unit) {
         while (true) {
             cpuFreq = try {
                 val freq = File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
                     .readText().trim().toLongOrNull()
-                if (freq != null) "${freq / 1000} MHz" else "未知"
+                if (freq != null) {
+                    history.add(freq / 1000f)
+                    if (history.size > 60) history.removeAt(0)
+                    "${freq / 1000} MHz"
+                } else {
+                    "未知"
+                }
             } catch (e: Exception) {
                 "未知"
             }
@@ -456,11 +467,34 @@ private fun MonitorScreen(onBack: () -> Unit) {
             title = "电池电量",
             summary = if (battery >= 0) "$battery%" else "未知"
         )
+        SmallTitle(text = "CPU 频率趋势")
+        CpuChart(values = history)
         TextButton(
             text = "返回",
             onClick = onBack,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+}
+
+@Composable
+private fun CpuChart(values: List<Float>, modifier: Modifier = Modifier) {
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(120.dp)
+    ) {
+        if (values.isEmpty()) return@Canvas
+        val max = (values.maxOrNull() ?: 1f).coerceAtLeast(1f)
+        val step = size.width / values.size
+        values.forEachIndexed { index, value ->
+            val barHeight = (value / max) * size.height
+            drawRect(
+                color = Color(0xFF3482FF),
+                topLeft = Offset(index * step, size.height - barHeight),
+                size = Size(step * 0.7f, barHeight)
+            )
+        }
     }
 }
 
