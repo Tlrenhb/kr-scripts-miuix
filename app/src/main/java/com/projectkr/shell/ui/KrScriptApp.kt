@@ -53,6 +53,7 @@ import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
 import com.projectkr.shell.shortcut.ShortcutHelper
 import com.projectkr.shell.shell.RootShellRunner
+import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
@@ -91,6 +92,7 @@ fun KrScriptApp() {
     var selectedTab by remember { mutableStateOf(0) }
     var onlineUrl by remember { mutableStateOf<String?>(null) }
     var onlineTitle by remember { mutableStateOf("在线页面") }
+    var showPowerMenu by remember { mutableStateOf(false) }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
@@ -146,6 +148,13 @@ fun KrScriptApp() {
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            if (selectedTab == 1) {
+                FloatingActionButton(onClick = { showPowerMenu = true }) {
+                    Icon(MiuixIcons.Settings, "电源菜单")
+                }
+            }
         },
         bottomBar = {
             NavigationBar {
@@ -232,6 +241,70 @@ fun KrScriptApp() {
                     ShortcutHelper.addShortcut(context, item.key, item.title)
                     Toast.makeText(context, "已请求创建快捷方式", Toast.LENGTH_SHORT).show()
                 }
+            )
+        }
+        PowerMenuDialog(
+            show = showPowerMenu,
+            context = context,
+            shellRunner = shellRunner,
+            onDismiss = { showPowerMenu = false }
+        )
+    }
+}
+
+@Composable
+private fun PowerMenuDialog(
+    show: Boolean,
+    context: Context,
+    shellRunner: ShellRunner,
+    onDismiss: () -> Unit,
+) {
+    if (!show) return
+    OverlayDialog(
+        show = true,
+        title = "电源菜单",
+        onDismissRequest = onDismiss
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TextButton(
+                text = "重启",
+                onClick = {
+                    shellRunner.execute("reboot")
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "重启到 Recovery",
+                onClick = {
+                    shellRunner.execute("reboot recovery")
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "重启到 Bootloader",
+                onClick = {
+                    shellRunner.execute("reboot bootloader")
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "关机",
+                onClick = {
+                    shellRunner.execute("reboot -p")
+                    onDismiss()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "取消",
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
