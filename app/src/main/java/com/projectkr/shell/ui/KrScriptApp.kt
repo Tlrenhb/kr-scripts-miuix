@@ -64,7 +64,9 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SearchBar
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
@@ -641,38 +643,88 @@ private fun NodeListScreen(
     onPageClick: (PageNode) -> Unit,
     onAddFavorite: (NodeInfoBase) -> Unit,
 ) {
-    LazyColumn(
-        contentPadding = contentPadding
-    ) {
-        nodes.forEach { node ->
-            when (node) {
-                is GroupNode -> {
-                    item(key = node.index) {
-                        SmallTitle(text = node.title)
+    var searchText by remember { mutableStateOf("") }
+    var searchExpanded by remember { mutableStateOf(false) }
+    val filteredNodes = remember(nodes, searchText) {
+        filterNodes(nodes, searchText)
+    }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        SearchBar(
+            inputField = {
+                InputField(
+                    query = searchText,
+                    onQueryChange = { searchText = it },
+                    onSearch = { searchExpanded = false },
+                    expanded = searchExpanded,
+                    onExpandedChange = { searchExpanded = it }
+                )
+            },
+            expanded = searchExpanded,
+            onExpandedChange = { searchExpanded = it }
+        ) {
+        }
+        LazyColumn(
+            contentPadding = contentPadding
+        ) {
+            filteredNodes.forEach { node ->
+                when (node) {
+                    is GroupNode -> {
+                        item(key = node.index) {
+                            SmallTitle(text = node.title)
+                        }
+                        items(node.children, key = { it.index }) { child ->
+                            NodeItem(
+                                node = child,
+                                context = context,
+                                shellRunner = shellRunner,
+                                onActionClick = onActionClick,
+                                onPageClick = onPageClick,
+                                onAddFavorite = onAddFavorite,
+                            )
+                        }
                     }
-                    items(node.children, key = { it.index }) { child ->
-                        NodeItem(
-                            node = child,
-                            context = context,
-                            shellRunner = shellRunner,
-                            onActionClick = onActionClick,
-                            onPageClick = onPageClick,
-                            onAddFavorite = onAddFavorite,
-                        )
+                    else -> {
+                        item(key = node.index) {
+                            NodeItem(
+                                node = node,
+                                context = context,
+                                shellRunner = shellRunner,
+                                onActionClick = onActionClick,
+                                onPageClick = onPageClick,
+                                onAddFavorite = onAddFavorite,
+                            )
+                        }
                     }
                 }
-                else -> {
-                    item(key = node.index) {
-                        NodeItem(
-                            node = node,
-                            context = context,
-                            shellRunner = shellRunner,
-                            onActionClick = onActionClick,
-                            onPageClick = onPageClick,
-                            onAddFavorite = onAddFavorite,
-                        )
+            }
+        }
+    }
+}
+
+private fun filterNodes(nodes: List<NodeInfoBase>, query: String): List<NodeInfoBase> {
+    if (query.isBlank()) return nodes
+    val q = query.trim().lowercase()
+    return nodes.mapNotNull { node ->
+        when (node) {
+            is GroupNode -> {
+                val children = filterNodes(node.children, query)
+                if (children.isNotEmpty() || node.title.lowercase().contains(q) || node.summary.lowercase().contains(q)) {
+                    GroupNode(node.currentPageConfigPath).apply {
+                        this.title = node.title
+                        this.summary = node.summary
+                        this.desc = node.desc
+                        this.children.addAll(children)
                     }
+                } else {
+                    null
                 }
+            }
+            else -> {
+                if (node.title.lowercase().contains(q) ||
+                    node.summary.lowercase().contains(q) ||
+                    node.desc.lowercase().contains(q)
+                ) node else null
             }
         }
     }
