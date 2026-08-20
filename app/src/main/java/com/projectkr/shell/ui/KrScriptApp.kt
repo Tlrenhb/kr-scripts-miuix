@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -401,6 +403,15 @@ private fun ActionParamsDialog(
     val states = remember(action) {
         params.map { ParamUiState(it) }
     }
+    var pendingFileParamIndex by remember { mutableStateOf(-1) }
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null && pendingFileParamIndex in states.indices) {
+            states[pendingFileParamIndex].text.value = TextFieldValue(uri.toString())
+        }
+        pendingFileParamIndex = -1
+    }
 
     OverlayDialog(
         show = true,
@@ -448,6 +459,24 @@ private fun ActionParamsDialog(
                             color = states[index].color.value,
                             onColorChanged = { states[index].color.value = it }
                         )
+                    }
+                    param.type == "file" || param.type == "path" -> {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextField(
+                                value = states[index].text.value,
+                                onValueChange = { states[index].text.value = it },
+                                label = param.title ?: param.name ?: "",
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            TextButton(
+                                text = "选择文件",
+                                onClick = {
+                                    pendingFileParamIndex = index
+                                    filePickerLauncher.launch(arrayOf("*/*"))
+                                }
+                            )
+                        }
                     }
                     else -> {
                         TextField(

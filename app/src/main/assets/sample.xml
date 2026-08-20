@@ -31,7 +31,8 @@
         </param>
         <param name="enable" title="启用" type="switch" value="1" />
         <param name="color" title="颜色" type="color" value="#FF0000" />
-        <script>echo "$msg $count $mode $enable $color"</script>
+        <param name="file" title="文件" type="file" />
+        <script>echo "$msg $count $mode $enable $color $file"</script>
     </action>
 
     <page title="子页面" summary="进入下一个页面">
