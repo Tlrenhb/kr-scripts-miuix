@@ -72,6 +72,8 @@ import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.PullToRefresh
+import top.yukonga.miuix.kmp.basic.rememberPullToRefreshState
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
@@ -131,6 +133,7 @@ fun KrScriptApp() {
     var fileSelectorParamName by remember { mutableStateOf<String?>(null) }
     val fileParamValues = remember { mutableStateMapOf<String, String>() }
     val pageStack = remember { mutableStateListOf<Triple<String, List<NodeInfoBase>, List<PageMenuOption>>>() }
+    var isRefreshing by remember { mutableStateOf(false) }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
         delay(1000)
@@ -291,6 +294,16 @@ fun KrScriptApp() {
                         contentPadding = padding,
                         context = context,
                         shellRunner = shellRunner,
+                        isRefreshing = isRefreshing,
+                        onRefresh = {
+                            isRefreshing = true
+                            val refreshed = reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
+                            currentNodes = refreshed
+                            currentTitle = "KrScript Miuix"
+                            currentMenuOptions = emptyList()
+                            pageStack.clear()
+                            isRefreshing = false
+                        },
                         onActionClick = { actionForParams = it },
                         onAddFavorite = { node ->
                             val key = node.key.ifEmpty { node.title }
@@ -826,6 +839,8 @@ private fun NodeListScreen(
     contentPadding: PaddingValues,
     context: Context,
     shellRunner: ShellRunner,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
     onActionClick: (ActionNode) -> Unit,
     onPageClick: (PageNode) -> Unit,
     onAddFavorite: (NodeInfoBase) -> Unit,
@@ -836,6 +851,11 @@ private fun NodeListScreen(
         filterNodes(nodes, searchText)
     }
 
+    PullToRefresh(
+        isRefreshing = isRefreshing,
+        onRefresh = onRefresh,
+        pullToRefreshState = rememberPullToRefreshState()
+    ) {
     Column(modifier = Modifier.fillMaxSize()) {
         SearchBar(
             inputField = {
@@ -886,6 +906,7 @@ private fun NodeListScreen(
                 }
             }
         }
+    }
     }
 }
 
