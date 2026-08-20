@@ -54,7 +54,10 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import com.projectkr.shell.core.config.PageConfigReader
 import com.projectkr.shell.core.config.ShellRunner
@@ -66,7 +69,6 @@ import com.projectkr.shell.core.model.NodeInfoBase
 import com.projectkr.shell.core.model.PageMenuOption
 import com.projectkr.shell.core.model.PageNode
 import com.projectkr.shell.core.model.PickerNode
-import com.projectkr.shell.core.model.RunnableNode
 import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
 import com.projectkr.shell.shortcut.ShortcutHelper
@@ -110,6 +112,7 @@ private data class FavoriteItem(
 @Composable
 fun KrScriptApp() {
     val context = LocalContext.current
+    val appScope = rememberCoroutineScope()
     val themePrefs = context.getSharedPreferences("kr_script_theme", Context.MODE_PRIVATE)
     var themeMode by remember { mutableStateOf(loadThemeMode(themePrefs)) }
     val themeController = remember(themeMode) { ThemeController(themeMode) }
@@ -185,8 +188,7 @@ fun KrScriptApp() {
                                 text = option.title,
                                 onClick = {
                                     val script = option.setState ?: ""
-                                    if (script.isNotBlank()) {
-                                        val result = shellRunner.execute(script)
+                                    runShellAsync(appScope, shellRunner, script) { result ->
                                         if (result.isNotBlank()) {
                                             Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
                                         }
@@ -696,6 +698,7 @@ private fun PowerMenuDialog(
     shellRunner: ShellRunner,
     onDismiss: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     OverlayDialog(
         show = show,
         title = "电源菜单",
@@ -708,32 +711,28 @@ private fun PowerMenuDialog(
             TextButton(
                 text = "重启",
                 onClick = {
-                    shellRunner.execute("reboot")
-                    onDismiss()
+                    runShellAsync(scope, shellRunner, "reboot") { onDismiss() }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
             TextButton(
                 text = "重启到 Recovery",
                 onClick = {
-                    shellRunner.execute("reboot recovery")
-                    onDismiss()
+                    runShellAsync(scope, shellRunner, "reboot recovery") { onDismiss() }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
             TextButton(
                 text = "重启到 Bootloader",
                 onClick = {
-                    shellRunner.execute("reboot bootloader")
-                    onDismiss()
+                    runShellAsync(scope, shellRunner, "reboot bootloader") { onDismiss() }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
             TextButton(
                 text = "关机",
                 onClick = {
-                    shellRunner.execute("reboot -p")
-                    onDismiss()
+                    runShellAsync(scope, shellRunner, "reboot -p") { onDismiss() }
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -956,10 +955,8 @@ private fun NodeItem(
                 },
                 onCheckedChange = { newValue ->
                     checked = newValue
-                    if (setState.isNotBlank()) {
-                        val result = shellRunner.execute(
-                            setState.replace("\$state", if (newValue) "1" else "0")
-                        )
+                    val script = setState.replace("\$state", if (newValue) "1" else "0")
+                    runShellAsync(scope, shellRunner, script) { result ->
                         if (result.isNotBlank()) {
                             Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
                         }
@@ -979,10 +976,8 @@ private fun NodeItem(
                 onSelectedIndexChange = { index ->
                     selectedIndex = index
                     val selectedValue = node.options?.getOrNull(index)?.value ?: ""
-                    if (setState.isNotBlank()) {
-                        val result = shellRunner.execute(
-                            setState.replace("\$state", selectedValue)
-                        )
+                    val script = setState.replace("\$state", selectedValue)
+                    runShellAsync(scope, shellRunner, script) { result ->
                         if (result.isNotBlank()) {
                             Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
                         }
@@ -1035,17 +1030,12 @@ private fun NodeItem(
                 onClick = {
                     if (node.params.isNullOrEmpty()) {
                         val script = node.setState ?: ""
-                        if (node.shell == RunnableNode.shellModeBgTask) {
-                            scope.launch {
-                                val result = shellRunner.execute(script)
-                                Toast.makeText(
-                                    context,
-                                    result.ifEmpty { "后台任务执行完成" },
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        } else {
-                            runAction(node, context, shellRunner)
+                        runShellAsync(scope, shellRunner, script) { result ->
+                            Toast.makeText(
+                                context,
+                                result.ifEmpty { "执行完成" },
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     } else {
                         onActionClick(node)
@@ -1109,6 +1099,7 @@ private fun ActionParamsDialog(
     onOpenFileSelector: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     val params = action?.params ?: emptyList()
     val states = remember(action) {
         params.map { ParamUiState(it) }
@@ -1236,11 +1227,12 @@ private fun ActionParamsDialog(
                     values.forEach { (key, value) ->
                         script = script.replace("\$key", value)
                     }
-                    val result = shellRunner.execute(script)
-                    if (result.isNotBlank()) {
-                        Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
+                    runShellAsync(scope, shellRunner, script) { result ->
+                        if (result.isNotBlank()) {
+                            Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
+                        }
+                        onDismiss()
                     }
-                    onDismiss()
                 },
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1305,18 +1297,21 @@ private fun parseColor(value: String?): Color {
     }
 }
 
-private fun runAction(
-    node: ActionNode,
-    context: Context,
+private fun runShellAsync(
+    scope: CoroutineScope,
     shellRunner: ShellRunner,
+    script: String,
+    onResult: (String) -> Unit,
 ) {
-    val script = node.setState ?: ""
-    if (script.isNotBlank()) {
+    if (script.isBlank()) {
+        onResult("")
+        return
+    }
+    scope.launch(Dispatchers.IO) {
         val result = shellRunner.execute(script)
-        Toast.makeText(
-            context,
-            result.ifEmpty { "执行完成" },
-            Toast.LENGTH_SHORT
-        ).show()
+        withContext(Dispatchers.Main) {
+            onResult(result)
+        }
     }
 }
+
