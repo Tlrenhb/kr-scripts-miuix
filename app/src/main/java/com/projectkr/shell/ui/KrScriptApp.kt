@@ -12,6 +12,7 @@ import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.provider.Settings
 import android.webkit.WebView
 import java.io.File
 import android.webkit.WebViewClient
@@ -62,6 +63,7 @@ import com.projectkr.shell.core.model.PickerNode
 import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
 import com.projectkr.shell.shortcut.ShortcutHelper
+import com.projectkr.shell.service.FloatMonitorService
 import com.projectkr.shell.shell.RootShellRunner
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
@@ -421,6 +423,31 @@ private fun HomeScreen(
         TextButton(
             text = "打开性能监控",
             onClick = onOpenMonitor,
+            modifier = Modifier.fillMaxWidth()
+        )
+        TextButton(
+            text = "开启悬浮监控",
+            onClick = {
+                if (Settings.canDrawOverlays(context)) {
+                    context.startForegroundService(
+                        Intent(context, FloatMonitorService::class.java)
+                    )
+                } else {
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:${context.packageName}")
+                        )
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+        TextButton(
+            text = "关闭悬浮监控",
+            onClick = {
+                context.stopService(Intent(context, FloatMonitorService::class.java))
+            },
             modifier = Modifier.fillMaxWidth()
         )
     }
