@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,11 +33,14 @@ import com.projectkr.shell.core.model.PickerNode
 import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
 import com.projectkr.shell.shell.RootShellRunner
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
@@ -48,23 +52,55 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 fun KrScriptApp() {
     val context = LocalContext.current
     val shellRunner = remember { RootShellRunner() }
-    val nodes = remember {
-        val reader = PageConfigReader(context, shellRunner)
+    val reader = remember { PageConfigReader(context, shellRunner) }
+    val rootNodes = remember {
         reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
     }
     var actionForParams by remember { mutableStateOf<ActionNode?>(null) }
+    var currentNodes by remember { mutableStateOf(rootNodes) }
+    var currentTitle by remember { mutableStateOf("KrScript Miuix") }
+    val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = "KrScript Miuix")
+            TopAppBar(
+                title = currentTitle,
+                navigationIcon = {
+                    if (pageStack.isNotEmpty()) {
+                        IconButton(onClick = {
+                            val previous = pageStack.removeAt(pageStack.lastIndex)
+                            currentNodes = previous.second
+                            currentTitle = previous.first
+                        }) {
+                            Icon(
+                                imageVector = MiuixIcons.Back,
+                                contentDescription = "返回"
+                            )
+                        }
+                    }
+                }
+            )
         }
     ) { padding ->
         NodeListScreen(
-            nodes = nodes,
+            nodes = currentNodes,
             contentPadding = padding,
             context = context,
             shellRunner = shellRunner,
-            onActionClick = { actionForParams = it }
+            onActionClick = { actionForParams = it },
+            onPageClick = { page ->
+                val path = page.pageConfigPath
+                if (path.isNotBlank()) {
+                    val childNodes = reader.readConfigXml(path, page.pageConfigDir) ?: emptyList()
+                    if (childNodes.isNotEmpty()) {
+                        pageStack.add(currentTitle to currentNodes)
+                        currentNodes = childNodes
+                        currentTitle = page.title
+                    }
+                } else {
+                    Toast.makeText(context, "此页面没有配置子页面", Toast.LENGTH_SHORT).show()
+                }
+            }
         )
         ActionParamsDialog(
             action = actionForParams,
@@ -82,6 +118,7 @@ private fun NodeListScreen(
     context: Context,
     shellRunner: ShellRunner,
     onActionClick: (ActionNode) -> Unit,
+    onPageClick: (PageNode) -> Unit,
 ) {
     LazyColumn(
         contentPadding = contentPadding
@@ -98,6 +135,7 @@ private fun NodeListScreen(
                             context = context,
                             shellRunner = shellRunner,
                             onActionClick = onActionClick,
+                            onPageClick = onPageClick,
                         )
                     }
                 }
@@ -108,6 +146,7 @@ private fun NodeListScreen(
                             context = context,
                             shellRunner = shellRunner,
                             onActionClick = onActionClick,
+                            onPageClick = onPageClick,
                         )
                     }
                 }
@@ -122,6 +161,7 @@ private fun NodeItem(
     context: Context,
     shellRunner: ShellRunner,
     onActionClick: (ActionNode) -> Unit,
+    onPageClick: (PageNode) -> Unit,
 ) {
     when (node) {
         is SwitchNode -> {
@@ -171,9 +211,7 @@ private fun NodeItem(
             ArrowPreference(
                 title = node.title,
                 summary = node.summary.ifEmpty { node.desc },
-                onClick = {
-                    Toast.makeText(context, "TODO: 子页面跳转", Toast.LENGTH_SHORT).show()
-                }
+                onClick = { onPageClick(node) }
             )
         }
         is ActionNode -> {
