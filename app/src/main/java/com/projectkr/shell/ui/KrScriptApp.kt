@@ -1016,6 +1016,14 @@ private fun NodeItem(
                         link.isNotBlank() && (link.startsWith("http://") || link.startsWith("https://")) -> {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
                         }
+                        node.activity.isNotBlank() -> {
+                            try {
+                                val intent = Intent(context, Class.forName(node.activity))
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "无法打开 Activity: ${node.activity}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                         online.isNotBlank() -> {
                             onlineUrl = online
                             onlineTitle = node.title
