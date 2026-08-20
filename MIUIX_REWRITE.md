@@ -11,7 +11,8 @@
 - [x] 移植 `PageConfigReader`（XML → Node 模型），通过 `ShellRunner` 解耦 Shell
 - [x] 添加轻量 `RootShellRunner`，可执行 `sh` 命令
 - [x] 添加 `sample.xml`，App 启动后真实解析并展示 Miuix 列表
-- [x] 添加 Action 参数弹窗（TextField 基础版）
+- [x] Action 参数弹窗：TextField / Slider / Checkbox / Dropdown
+- [x] 子页面导航（返回栈）
 - [x] 初步交互：
   - Action 点击执行脚本
   - Switch 切换执行 setState
@@ -27,8 +28,8 @@
 
 - [ ] 移植 `PathAnalysis`（相对路径 / assets / root 文件解析）
 - [ ] 移植 `ScriptEnvironmen` / `KeepShell` / `ExtractAssets`
-- [ ] 实现真实 ROOT Shell 环境（替换轻量 RootShellRunner）
-- [ ] 完善参数表单（Slider / Checkbox / ColorPicker / 多选）
+- [ ] 实现真实 ROOT Shell 环境（替换轻量 RootShellRunner，当前已支持 sh + su fallback）
+- [ ] 继续完善参数表单（ColorPicker / 多选 / 文件选择）
 - [ ] 重写 MainActivity / Splash / ActionPage / 收藏 / 在线页
 - [ ] 主题、动态取色、深色模式打磨
 - [ ] 在 ROOT 设备上回归测试
