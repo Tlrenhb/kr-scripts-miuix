@@ -41,8 +41,9 @@
 
 - [ ] 移植完整 `ScriptEnvironmen` / `KeepShell`，替换轻量 RootShellRunner
 - [x] 文件选择器已接入 Action 参数
-- [ ] CPU / 悬浮监控
-- [ ] 更完整的 PIO 首页仪表盘
+- [x] 实时 CPU / 电池监控页
+- [ ] 悬浮窗监控
+- [ ] 更完整的 PIO 首页仪表盘 / 悬浮窗
 - [x] 主题设置（跟随系统 / 浅色 / 深色 / Monet 动态取色，持久化）
 - [ ] 在 ROOT 设备上回归测试
 - [ ] Push 到 GitHub fork
