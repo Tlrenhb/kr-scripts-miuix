@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -32,6 +34,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import com.projectkr.shell.core.config.PageConfigReader
 import com.projectkr.shell.core.config.ShellRunner
 import com.projectkr.shell.core.model.ActionNode
@@ -80,6 +83,16 @@ fun KrScriptApp() {
     var currentTitle by remember { mutableStateOf("KrScript Miuix") }
     var selectedTab by remember { mutableStateOf(0) }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
+    var showSplash by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(1000)
+        showSplash = false
+    }
+    if (showSplash) {
+        SplashScreen()
+        return
+    }
+
     val favoritesPrefs = context.getSharedPreferences("kr_script_favorites", Context.MODE_PRIVATE)
     val favorites = remember {
         mutableStateListOf<FavoriteItem>().apply {
@@ -199,6 +212,25 @@ fun KrScriptApp() {
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun SplashScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "KrScript Miuix",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "正在加载...",
+        )
     }
 }
 
