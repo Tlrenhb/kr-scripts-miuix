@@ -13,7 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.shell.core.config.PageConfigReader
-import com.projectkr.shell.core.config.ShellRunner
+import com.projectkr.shell.shell.RootShellRunner
 import com.projectkr.shell.core.model.ActionNode
 import com.projectkr.shell.core.model.GroupNode
 import com.projectkr.shell.core.model.NodeInfoBase
@@ -33,9 +33,7 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 fun KrScriptApp() {
     val context = LocalContext.current
     val nodes = remember {
-        val reader = PageConfigReader(context, object : ShellRunner {
-            override fun execute(script: String): String = "1"
-        })
+        val reader = PageConfigReader(context, RootShellRunner())
         reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
     }
     Scaffold(
