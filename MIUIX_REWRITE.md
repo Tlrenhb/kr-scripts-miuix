@@ -13,6 +13,8 @@
 - [x] 添加 `sample.xml`，App 启动后真实解析并展示 Miuix 列表
 - [x] Action 参数弹窗：TextField / Slider / Checkbox / Dropdown
 - [x] 子页面导航（返回栈）
+- [x] 底部导航（页面 / 关于）
+- [x] TextNode 多行富文本渲染
 - [x] 初步交互：
   - Action 点击执行脚本
   - Switch 切换执行 setState
@@ -30,7 +32,7 @@
 - [ ] 移植 `ScriptEnvironmen` / `KeepShell` / `ExtractAssets`
 - [ ] 实现真实 ROOT Shell 环境（替换轻量 RootShellRunner，当前已支持 sh + su fallback）
 - [ ] 继续完善参数表单（ColorPicker / 多选 / 文件选择）
-- [ ] 重写 MainActivity / Splash / ActionPage / 收藏 / 在线页
+- [ ] 重写 Splash / 收藏 / 在线页 / 文件选择器
 - [ ] 主题、动态取色、深色模式打磨
 - [ ] 在 ROOT 设备上回归测试
 
