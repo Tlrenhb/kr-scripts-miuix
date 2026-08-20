@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -40,6 +41,8 @@ import com.projectkr.shell.core.model.SwitchNode
 import com.projectkr.shell.core.model.TextNode
 import com.projectkr.shell.shell.RootShellRunner
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -66,6 +69,7 @@ fun KrScriptApp() {
     var actionForParams by remember { mutableStateOf<ActionNode?>(null) }
     var currentNodes by remember { mutableStateOf(rootNodes) }
     var currentTitle by remember { mutableStateOf("KrScript Miuix") }
+    var selectedTab by remember { mutableStateOf(0) }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
 
     Scaffold(
@@ -73,7 +77,7 @@ fun KrScriptApp() {
             TopAppBar(
                 title = currentTitle,
                 navigationIcon = {
-                    if (pageStack.isNotEmpty()) {
+                    if (pageStack.isNotEmpty() && selectedTab == 0) {
                         IconButton(onClick = {
                             val previous = pageStack.removeAt(pageStack.lastIndex)
                             currentNodes = previous.second
@@ -87,33 +91,72 @@ fun KrScriptApp() {
                     }
                 }
             )
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    icon = MiuixIcons.Home,
+                    label = "页面"
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    icon = MiuixIcons.Info,
+                    label = "关于"
+                )
+            }
         }
     ) { padding ->
-        NodeListScreen(
-            nodes = currentNodes,
-            contentPadding = padding,
-            context = context,
-            shellRunner = shellRunner,
-            onActionClick = { actionForParams = it },
-            onPageClick = { page ->
-                val path = page.pageConfigPath
-                if (path.isNotBlank()) {
-                    val childNodes = reader.readConfigXml(path, page.pageConfigDir) ?: emptyList()
-                    if (childNodes.isNotEmpty()) {
-                        pageStack.add(currentTitle to currentNodes)
-                        currentNodes = childNodes
-                        currentTitle = page.title
+        if (selectedTab == 0) {
+            NodeListScreen(
+                nodes = currentNodes,
+                contentPadding = padding,
+                context = context,
+                shellRunner = shellRunner,
+                onActionClick = { actionForParams = it },
+                onPageClick = { page ->
+                    val path = page.pageConfigPath
+                    if (path.isNotBlank()) {
+                        val childNodes = reader.readConfigXml(path, page.pageConfigDir) ?: emptyList()
+                        if (childNodes.isNotEmpty()) {
+                            pageStack.add(currentTitle to currentNodes)
+                            currentNodes = childNodes
+                            currentTitle = page.title
+                        }
+                    } else {
+                        Toast.makeText(context, "此页面没有配置子页面", Toast.LENGTH_SHORT).show()
                     }
-                } else {
-                    Toast.makeText(context, "此页面没有配置子页面", Toast.LENGTH_SHORT).show()
                 }
-            }
+            )
+            ActionParamsDialog(
+                action = actionForParams,
+                context = context,
+                shellRunner = shellRunner,
+                onDismiss = { actionForParams = null }
+            )
+        } else {
+            AboutScreen(contentPadding = padding)
+        }
+    }
+}
+
+@Composable
+private fun AboutScreen(contentPadding: PaddingValues) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(contentPadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "KrScript Miuix",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
         )
-        ActionParamsDialog(
-            action = actionForParams,
-            context = context,
-            shellRunner = shellRunner,
-            onDismiss = { actionForParams = null }
+        Text(
+            text = "使用 Compose + Miuix 重写 kr-scripts 的示例工程。",
         )
     }
 }
