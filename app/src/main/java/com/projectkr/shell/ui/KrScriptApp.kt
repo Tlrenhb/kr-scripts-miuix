@@ -6,8 +6,11 @@ package com.projectkr.shell.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.app.ActivityManager
 import android.os.BatteryManager
 import android.os.Build
+import android.os.Environment
+import android.os.StatFs
 import android.webkit.WebView
 import java.io.File
 import android.webkit.WebViewClient
@@ -322,6 +325,19 @@ private fun HomeScreen(
             "未知"
         }
     }
+    val totalRam = remember {
+        val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val memInfo = ActivityManager.MemoryInfo()
+        manager?.getMemoryInfo(memInfo)
+        memInfo.totalMem
+    }
+    val totalStorage = remember {
+        try {
+            StatFs(Environment.getDataDirectory().path).totalBytes
+        } catch (e: Exception) {
+            0L
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -344,6 +360,14 @@ private fun HomeScreen(
         ArrowPreference(
             title = "CPU 频率",
             summary = cpuFreq
+        )
+        ArrowPreference(
+            title = "运行内存",
+            summary = if (totalRam > 0) "${totalRam / 1024 / 1024 / 1024} GB" else "未知"
+        )
+        ArrowPreference(
+            title = "存储空间",
+            summary = if (totalStorage > 0) "${totalStorage / 1024 / 1024 / 1024} GB" else "未知"
         )
         ArrowPreference(
             title = "电池电量",
