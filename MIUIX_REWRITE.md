@@ -19,6 +19,7 @@
   - Text → SmallTitle / 富文本行
   - Group → 分组小标题
 - [x] 子页面导航（返回栈）
+- [x] 页面搜索（SearchBar）
 - [x] PageNode 外链浏览器打开
 - [x] 在线页 WebView
 - [x] 底部导航（首页 / 页面 / 收藏 / 关于）
