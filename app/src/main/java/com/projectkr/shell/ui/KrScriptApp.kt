@@ -363,6 +363,17 @@ private fun HomeScreen(
             "未知"
         }
     }
+    val coreFreqs = remember {
+        (0 until cores).mapNotNull { index ->
+            try {
+                val freq = File("/sys/devices/system/cpu/cpu$index/cpufreq/scaling_cur_freq")
+                    .readText().trim().toLongOrNull()
+                if (freq != null) "Core $index: ${freq / 1000} MHz" else null
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
     val totalRam = remember {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         val memInfo = ActivityManager.MemoryInfo()
@@ -409,6 +420,12 @@ private fun HomeScreen(
             title = "CPU 频率",
             summary = cpuFreq
         )
+        coreFreqs.forEach { core ->
+            ArrowPreference(
+                title = "核心频率",
+                summary = core
+            )
+        }
         ArrowPreference(
             title = "运行内存",
             summary = if (totalRam > 0) "${totalRam / 1024 / 1024 / 1024} GB" else "未知"
@@ -510,6 +527,12 @@ private fun MonitorScreen(onBack: () -> Unit) {
             title = "CPU 频率",
             summary = cpuFreq
         )
+        coreFreqs.forEach { core ->
+            ArrowPreference(
+                title = "核心频率",
+                summary = core
+            )
+        }
         ArrowPreference(
             title = "电池电量",
             summary = if (battery >= 0) "$battery%" else "未知"
