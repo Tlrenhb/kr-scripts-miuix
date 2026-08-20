@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -89,6 +91,7 @@ import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.ColorPicker
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -459,115 +462,134 @@ private fun HomeScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(contentPadding),
+            .padding(contentPadding)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SmallTitle(text = "设备信息")
-        ArrowPreference(
-            title = "型号",
-            summary = "${Build.MANUFACTURER} ${Build.MODEL}"
-        )
-        ArrowPreference(
-            title = "Android 版本",
-            summary = Build.VERSION.RELEASE
-        )
-        ArrowPreference(
-            title = "CPU 核心数",
-            summary = "$cores"
-        )
-        ArrowPreference(
-            title = "CPU 频率",
-            summary = cpuFreq
-        )
-        coreFreqs.forEach { core ->
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+        ) {
             ArrowPreference(
-                title = "核心频率",
-                summary = core
+                title = "型号",
+                summary = "${Build.MANUFACTURER} ${Build.MODEL}"
+            )
+            ArrowPreference(
+                title = "Android 版本",
+                summary = Build.VERSION.RELEASE
+            )
+            ArrowPreference(
+                title = "CPU 核心数",
+                summary = "$cores"
+            )
+            ArrowPreference(
+                title = "CPU 频率",
+                summary = cpuFreq
+            )
+            coreFreqs.forEach { core ->
+                ArrowPreference(
+                    title = "核心频率",
+                    summary = core
+                )
+            }
+            ArrowPreference(
+                title = "运行内存",
+                summary = if (totalRam > 0) "${totalRam / 1024 / 1024 / 1024} GB" else "未知"
+            )
+            ArrowPreference(
+                title = "存储空间",
+                summary = if (totalStorage > 0) "${totalStorage / 1024 / 1024 / 1024} GB" else "未知"
+            )
+            ArrowPreference(
+                title = "电池电量",
+                summary = if (battery >= 0) "$battery%" else "未知"
+            )
+            ArrowPreference(
+                title = "电池温度",
+                summary = batteryTemp
+            )
+            ArrowPreference(
+                title = "已运行时间",
+                summary = uptime
             )
         }
-        ArrowPreference(
-            title = "运行内存",
-            summary = if (totalRam > 0) "${totalRam / 1024 / 1024 / 1024} GB" else "未知"
-        )
-        ArrowPreference(
-            title = "存储空间",
-            summary = if (totalStorage > 0) "${totalStorage / 1024 / 1024 / 1024} GB" else "未知"
-        )
-        ArrowPreference(
-            title = "电池电量",
-            summary = if (battery >= 0) "$battery%" else "未知"
-        )
-        ArrowPreference(
-            title = "电池温度",
-            summary = batteryTemp
-        )
-        ArrowPreference(
-            title = "已运行时间",
-            summary = uptime
-        )
         SmallTitle(text = "使用率")
-        LinearProgressIndicator(
-            progress = if (battery >= 0) battery / 100f else 0f,
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        Text(text = if (battery >= 0) "电池 $battery%" else "电池 未知")
-        LinearProgressIndicator(
-            progress = ramRatio,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        Text(text = "内存 ${(ramRatio * 100).toInt()}%")
-        LinearProgressIndicator(
-            progress = storageRatio,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        )
-        Text(text = "存储 ${(storageRatio * 100).toInt()}%")
+                .padding(horizontal = 12.dp)
+        ) {
+            LinearProgressIndicator(
+                progress = if (battery >= 0) battery / 100f else 0f,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+            Text(text = if (battery >= 0) "电池 $battery%" else "电池 未知")
+            LinearProgressIndicator(
+                progress = ramRatio,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+            Text(text = "内存 ${(ramRatio * 100).toInt()}%")
+            LinearProgressIndicator(
+                progress = storageRatio,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+            )
+            Text(text = "存储 ${(storageRatio * 100).toInt()}%")
+        }
         SmallTitle(text = "快捷操作")
-        TextButton(
-            text = "打开电源菜单",
-            onClick = onOpenPowerMenu,
-            modifier = Modifier.fillMaxWidth()
-        )
-        TextButton(
-            text = "打开文件选择器",
-            onClick = onOpenFileSelector,
-            modifier = Modifier.fillMaxWidth()
-        )
-        TextButton(
-            text = "打开性能监控",
-            onClick = onOpenMonitor,
-            modifier = Modifier.fillMaxWidth()
-        )
-        TextButton(
-            text = "开启悬浮监控",
-            onClick = {
-                if (Settings.canDrawOverlays(context)) {
-                    context.startForegroundService(
-                        Intent(context, FloatMonitorService::class.java)
-                    )
-                } else {
-                    context.startActivity(
-                        Intent(
-                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                            Uri.parse("package:${context.packageName}")
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+        ) {
+            TextButton(
+                text = "打开电源菜单",
+                onClick = onOpenPowerMenu,
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "打开文件选择器",
+                onClick = onOpenFileSelector,
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "打开性能监控",
+                onClick = onOpenMonitor,
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "开启悬浮监控",
+                onClick = {
+                    if (Settings.canDrawOverlays(context)) {
+                        context.startForegroundService(
+                            Intent(context, FloatMonitorService::class.java)
                         )
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        TextButton(
-            text = "关闭悬浮监控",
-            onClick = {
-                context.stopService(Intent(context, FloatMonitorService::class.java))
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
+                    } else {
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${context.packageName}")
+                            )
+                        )
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            TextButton(
+                text = "关闭悬浮监控",
+                onClick = {
+                    context.stopService(Intent(context, FloatMonitorService::class.java))
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
@@ -604,7 +626,8 @@ private fun MonitorScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(contentPadding)
-            .padding(16.dp),
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SmallTitle(text = "性能监控")
@@ -795,7 +818,8 @@ private fun AboutScreen(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(contentPadding),
+            .padding(contentPadding)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
