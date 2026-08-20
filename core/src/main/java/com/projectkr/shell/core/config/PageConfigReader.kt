@@ -13,6 +13,7 @@ import com.projectkr.shell.core.model.SelectItem
 import com.projectkr.shell.core.model.*
 import org.xmlpull.v1.XmlPullParser
 import com.projectkr.shell.core.config.ShellRunner
+import com.projectkr.shell.core.executor.ExtractAssets
 import java.io.InputStream
 
 /**
@@ -552,7 +553,13 @@ class PageConfigReader(
     }
 
     private fun resourceNode(parser: XmlPullParser) {
-        // TODO: 移植 ExtractAssets 后在这里解压资源文件
+        val extractor = ExtractAssets(context)
+        for (i in 0 until parser.attributeCount) {
+            when (parser.getAttributeName(i)) {
+                "file" -> extractor.extractResource(parser.getAttributeValue(i).trim())
+                "dir" -> extractor.extractResources(parser.getAttributeValue(i).trim())
+            }
+        }
     }
 
     private fun tagEndInSwitch(switchNode: SwitchNode?, parser: XmlPullParser) {
