@@ -11,7 +11,7 @@
 - [x] 移植 `PageConfigReader`（XML → Node 模型），通过 `ShellRunner` 解耦 Shell
 - [x] 添加轻量 `RootShellRunner`，可执行 `sh` 命令
 - [x] 添加 `sample.xml`，App 启动后真实解析并展示 Miuix 列表
-- [x] Action 参数弹窗：TextField / Slider / Checkbox / Dropdown / ColorPicker
+- [x] Action 参数弹窗：TextField / Slider / Checkbox / Dropdown / ColorPicker / 文件选择 / 多选
 - [x] 子页面导航（返回栈）
 - [x] 底部导航（页面 / 关于 / 收藏）
 - [x] 收藏夹（SharedPreferences 持久化）
@@ -32,8 +32,8 @@
 - [ ] 移植 `PathAnalysis`（相对路径 / assets / root 文件解析）
 - [ ] 移植 `ScriptEnvironmen` / `KeepShell` / `ExtractAssets`
 - [ ] 实现真实 ROOT Shell 环境（替换轻量 RootShellRunner，当前已支持 sh + su fallback）
-- [ ] 继续完善参数表单（多选 / 文件选择）
-- [ ] 在线页 / 文件选择器 / Splash
+- [ ] 参数表单基本完整，剩余特殊类型按需补充
+- [ ] 在线页 / Splash / 快捷方式
 - [ ] 主题、动态取色、深色模式打磨
 - [ ] 在 ROOT 设备上回归测试
 
