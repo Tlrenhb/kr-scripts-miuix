@@ -21,13 +21,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -97,6 +96,8 @@ fun KrScriptApp() {
     var onlineTitle by remember { mutableStateOf("在线页面") }
     var showPowerMenu by remember { mutableStateOf(false) }
     var showFileSelector by remember { mutableStateOf(false) }
+    var fileSelectorParamName by remember { mutableStateOf<String?>(null) }
+    val fileParamValues = remember { mutableStateMapOf<String, String>() }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
@@ -133,17 +134,18 @@ fun KrScriptApp() {
         topBar = {
             TopAppBar(
                 title = when {
-                    showFileSelector -> "文件选择器"
+                    showFileSelector || fileSelectorParamName != null -> "文件选择器"
                     selectedTab == 0 -> "首页"
                     selectedTab == 1 -> if (onlineUrl != null) onlineTitle else currentTitle
                     selectedTab == 2 -> "收藏"
                     else -> "关于"
                 },
                 navigationIcon = {
-                    if (showFileSelector || ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1)) {
+                    if (showFileSelector || fileSelectorParamName != null || ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1)) {
                         IconButton(onClick = {
                             when {
                                 showFileSelector -> showFileSelector = false
+                                fileSelectorParamName != null -> fileSelectorParamName = null
                                 onlineUrl != null -> onlineUrl = null
                                 pageStack.isNotEmpty() -> {
                                     val previous = pageStack.removeAt(pageStack.lastIndex)
@@ -197,12 +199,21 @@ fun KrScriptApp() {
             }
         }
     ) { padding ->
-        if (showFileSelector) {
+        if (showFileSelector || fileSelectorParamName != null) {
             FileSelectorScreen(
-                onBack = { showFileSelector = false },
-                onSelect = { path ->
-                    Toast.makeText(context, "选中: $path", Toast.LENGTH_LONG).show()
+                onBack = {
                     showFileSelector = false
+                    fileSelectorParamName = null
+                },
+                onSelect = { path ->
+                    val paramName = fileSelectorParamName
+                    if (paramName != null) {
+                        fileParamValues[paramName] = path
+                        fileSelectorParamName = null
+                    } else {
+                        Toast.makeText(context, "选中: $path", Toast.LENGTH_LONG).show()
+                        showFileSelector = false
+                    }
                 }
             )
         } else {
@@ -258,6 +269,10 @@ fun KrScriptApp() {
                         action = actionForParams,
                         context = context,
                         shellRunner = shellRunner,
+                        fileValues = fileParamValues,
+                        onOpenFileSelector = { name ->
+                            fileSelectorParamName = name
+                        },
                         onDismiss = { actionForParams = null }
                     )
                 }
@@ -677,6 +692,8 @@ private fun ActionParamsDialog(
     action: ActionNode?,
     context: Context,
     shellRunner: ShellRunner,
+    fileValues: MutableMap<String, String>,
+    onOpenFileSelector: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     if (action == null) return
@@ -684,16 +701,6 @@ private fun ActionParamsDialog(
     val states = remember(action) {
         params.map { ParamUiState(it) }
     }
-    var pendingFileParamIndex by remember { mutableStateOf(-1) }
-    val filePickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null && pendingFileParamIndex in states.indices) {
-            states[pendingFileParamIndex].text.value = TextFieldValue(uri.toString())
-        }
-        pendingFileParamIndex = -1
-    }
-
     OverlayDialog(
         show = true,
         title = action.title,
@@ -742,10 +749,11 @@ private fun ActionParamsDialog(
                         )
                     }
                     param.type == "file" || param.type == "path" -> {
+                        val name = param.name ?: ""
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextField(
-                                value = states[index].text.value,
-                                onValueChange = { states[index].text.value = it },
+                                value = TextFieldValue(fileValues[name] ?: ""),
+                                onValueChange = { fileValues[name] = it.text },
                                 label = param.title ?: param.name ?: "",
                                 singleLine = true,
                                 modifier = Modifier.fillMaxWidth()
@@ -753,8 +761,7 @@ private fun ActionParamsDialog(
                             TextButton(
                                 text = "选择文件",
                                 onClick = {
-                                    pendingFileParamIndex = index
-                                    filePickerLauncher.launch(arrayOf("*/*"))
+                                    onOpenFileSelector(name)
                                 }
                             )
                         }
@@ -806,6 +813,8 @@ private fun ActionParamsDialog(
                                 states[index].selectedOptions.value
                                     .mapNotNull { param.options?.getOrNull(it)?.value }
                                     .joinToString(param.separator)
+                            param.type == "file" || param.type == "path" ->
+                                fileValues[param.name ?: ""] ?: ""
                             else -> states[index].text.value.text
                         }
                         values[name] = value
