@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.webkit.WebView
+import java.io.File
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -95,6 +96,7 @@ fun KrScriptApp() {
     var onlineUrl by remember { mutableStateOf<String?>(null) }
     var onlineTitle by remember { mutableStateOf("在线页面") }
     var showPowerMenu by remember { mutableStateOf(false) }
+    var showFileSelector by remember { mutableStateOf(false) }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
@@ -130,21 +132,24 @@ fun KrScriptApp() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = when (selectedTab) {
-                    0 -> "首页"
-                    1 -> if (onlineUrl != null) onlineTitle else currentTitle
-                    2 -> "收藏"
+                title = when {
+                    showFileSelector -> "文件选择器"
+                    selectedTab == 0 -> "首页"
+                    selectedTab == 1 -> if (onlineUrl != null) onlineTitle else currentTitle
+                    selectedTab == 2 -> "收藏"
                     else -> "关于"
                 },
                 navigationIcon = {
-                    if ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1) {
+                    if (showFileSelector || ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1)) {
                         IconButton(onClick = {
-                            if (onlineUrl != null) {
-                                onlineUrl = null
-                            } else {
-                                val previous = pageStack.removeAt(pageStack.lastIndex)
-                                currentNodes = previous.second
-                                currentTitle = previous.first
+                            when {
+                                showFileSelector -> showFileSelector = false
+                                onlineUrl != null -> onlineUrl = null
+                                pageStack.isNotEmpty() -> {
+                                    val previous = pageStack.removeAt(pageStack.lastIndex)
+                                    currentNodes = previous.second
+                                    currentTitle = previous.first
+                                }
                             }
                         }) {
                             Icon(
@@ -192,11 +197,21 @@ fun KrScriptApp() {
             }
         }
     ) { padding ->
+        if (showFileSelector) {
+            FileSelectorScreen(
+                onBack = { showFileSelector = false },
+                onSelect = { path ->
+                    Toast.makeText(context, "选中: $path", Toast.LENGTH_LONG).show()
+                    showFileSelector = false
+                }
+            )
+        } else {
         when (selectedTab) {
             0 -> HomeScreen(
                 contentPadding = padding,
                 context = context,
-                onOpenPowerMenu = { showPowerMenu = true }
+                onOpenPowerMenu = { showPowerMenu = true },
+                onOpenFileSelector = { showFileSelector = true }
             )
             1 -> {
                 val url = onlineUrl
@@ -261,12 +276,13 @@ fun KrScriptApp() {
             )
             else -> AboutScreen(contentPadding = padding)
         }
-        PowerMenuDialog(
-            show = showPowerMenu,
-            context = context,
-            shellRunner = shellRunner,
-            onDismiss = { showPowerMenu = false }
-        )
+            PowerMenuDialog(
+                show = showPowerMenu,
+                context = context,
+                shellRunner = shellRunner,
+                onDismiss = { showPowerMenu = false }
+            )
+        }
     }
 }
 
@@ -275,6 +291,7 @@ private fun HomeScreen(
     contentPadding: PaddingValues,
     context: Context,
     onOpenPowerMenu: () -> Unit,
+    onOpenFileSelector: () -> Unit,
 ) {
     val battery = remember {
         val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
@@ -310,6 +327,53 @@ private fun HomeScreen(
             onClick = onOpenPowerMenu,
             modifier = Modifier.fillMaxWidth()
         )
+        TextButton(
+            text = "打开文件选择器",
+            onClick = onOpenFileSelector,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun FileSelectorScreen(
+    onBack: () -> Unit,
+    onSelect: (String) -> Unit,
+) {
+    var currentDir by remember { mutableStateOf(File("/storage/emulated/0")) }
+    val entries = remember(currentDir) {
+        currentDir.listFiles()?.sortedBy { !it.isDirectory } ?: emptyList()
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = currentDir.absolutePath)
+        LazyColumn {
+            if (currentDir.parentFile != null) {
+                item(key = "parent") {
+                    ArrowPreference(
+                        title = "..",
+                        onClick = { currentDir = currentDir.parentFile!! }
+                    )
+                }
+            }
+            items(entries, key = { it.absolutePath }) { file ->
+                ArrowPreference(
+                    title = if (file.isDirectory) "📁 ${file.name}" else "📄 ${file.name}",
+                    summary = if (file.isDirectory) "目录" else "${file.length()} bytes",
+                    onClick = {
+                        if (file.isDirectory) {
+                            currentDir = file
+                        } else {
+                            onSelect(file.absolutePath)
+                        }
+                    }
+                )
+            }
+        }
     }
 }
 
