@@ -60,6 +60,7 @@ import com.projectkr.shell.core.model.ActionNode
 import com.projectkr.shell.core.model.ActionParamInfo
 import com.projectkr.shell.core.model.GroupNode
 import com.projectkr.shell.core.model.NodeInfoBase
+import com.projectkr.shell.core.model.PageMenuOption
 import com.projectkr.shell.core.model.PageNode
 import com.projectkr.shell.core.model.PickerNode
 import com.projectkr.shell.core.model.SwitchNode
@@ -120,6 +121,7 @@ fun KrScriptApp() {
     var actionForParams by remember { mutableStateOf<ActionNode?>(null) }
     var currentNodes by remember { mutableStateOf(rootNodes) }
     var currentTitle by remember { mutableStateOf("KrScript Miuix") }
+    var currentMenuOptions by remember { mutableStateOf<List<PageMenuOption>>(emptyList()) }
     var selectedTab by remember { mutableStateOf(0) }
     var onlineUrl by remember { mutableStateOf<String?>(null) }
     var onlineTitle by remember { mutableStateOf("在线页面") }
@@ -128,7 +130,7 @@ fun KrScriptApp() {
     var showMonitor by remember { mutableStateOf(false) }
     var fileSelectorParamName by remember { mutableStateOf<String?>(null) }
     val fileParamValues = remember { mutableStateMapOf<String, String>() }
-    val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
+    val pageStack = remember { mutableStateListOf<Triple<String, List<NodeInfoBase>, List<PageMenuOption>>>() }
     var showSplash by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) {
         delay(1000)
@@ -172,6 +174,24 @@ fun KrScriptApp() {
                     selectedTab == 2 -> "收藏"
                     else -> "关于"
                 },
+                actions = {
+                    if (selectedTab == 1 && onlineUrl == null) {
+                        currentMenuOptions.forEach { option ->
+                            TextButton(
+                                text = option.title,
+                                onClick = {
+                                    val script = option.setState ?: ""
+                                    if (script.isNotBlank()) {
+                                        val result = shellRunner.execute(script)
+                                        if (result.isNotBlank()) {
+                                            Toast.makeText(context, result, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     if (showMonitor || showFileSelector || fileSelectorParamName != null || ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1)) {
                         IconButton(onClick = {
@@ -184,6 +204,7 @@ fun KrScriptApp() {
                                     val previous = pageStack.removeAt(pageStack.lastIndex)
                                     currentNodes = previous.second
                                     currentTitle = previous.first
+                                    currentMenuOptions = previous.third
                                 }
                             }
                         }) {
@@ -292,9 +313,12 @@ fun KrScriptApp() {
                             if (path.isNotBlank()) {
                                 val childNodes = reader.readConfigXml(path, page.pageConfigDir) ?: emptyList()
                                 if (childNodes.isNotEmpty()) {
-                                    pageStack.add(currentTitle to currentNodes)
+                                    pageStack.add(
+                                        Triple(currentTitle, currentNodes, currentMenuOptions)
+                                    )
                                     currentNodes = childNodes
                                     currentTitle = page.title
+                                    currentMenuOptions = page.pageMenuOptions ?: emptyList()
                                 }
                             } else {
                                 Toast.makeText(context, "此页面没有配置子页面", Toast.LENGTH_SHORT).show()

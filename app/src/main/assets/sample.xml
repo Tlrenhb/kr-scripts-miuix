@@ -47,4 +47,10 @@
     <page title="在线页面" summary="WebView 加载">
         <html>https://example.com</html>
     </page>
+
+    <page title="带菜单页面" summary="页面菜单示例">
+        <option>刷新</option>
+        <option>关于</option>
+        <config>file:///android_asset/sample.xml</config>
+    </page>
 </kr-script>
