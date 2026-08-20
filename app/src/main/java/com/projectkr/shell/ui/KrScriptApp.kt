@@ -54,6 +54,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.coroutines.delay
 import com.projectkr.shell.core.config.PageConfigReader
 import com.projectkr.shell.core.config.ShellRunner
+import com.projectkr.shell.core.executor.ScriptEnvironment
 import com.projectkr.shell.core.model.ActionNode
 import com.projectkr.shell.core.model.ActionParamInfo
 import com.projectkr.shell.core.model.GroupNode
@@ -109,7 +110,7 @@ fun KrScriptApp() {
         themePrefs.edit().putString("mode", mode.name).apply()
     }
 
-    val shellRunner = remember { RootShellRunner() }
+    val shellRunner = remember { ScriptEnvironment(context, RootShellRunner()) }
     val reader = remember { PageConfigReader(context, shellRunner) }
     val rootNodes = remember {
         reader.readConfigXml("file:///android_asset/sample.xml") ?: emptyList()
