@@ -114,6 +114,7 @@ fun KrScriptApp() {
     var onlineTitle by remember { mutableStateOf("在线页面") }
     var showPowerMenu by remember { mutableStateOf(false) }
     var showFileSelector by remember { mutableStateOf(false) }
+    var showMonitor by remember { mutableStateOf(false) }
     var fileSelectorParamName by remember { mutableStateOf<String?>(null) }
     val fileParamValues = remember { mutableStateMapOf<String, String>() }
     val pageStack = remember { mutableStateListOf<Pair<String, List<NodeInfoBase>>>() }
@@ -153,6 +154,7 @@ fun KrScriptApp() {
         topBar = {
             TopAppBar(
                 title = when {
+                    showMonitor -> "性能监控"
                     showFileSelector || fileSelectorParamName != null -> "文件选择器"
                     selectedTab == 0 -> "首页"
                     selectedTab == 1 -> if (onlineUrl != null) onlineTitle else currentTitle
@@ -160,9 +162,10 @@ fun KrScriptApp() {
                     else -> "关于"
                 },
                 navigationIcon = {
-                    if (showFileSelector || fileSelectorParamName != null || ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1)) {
+                    if (showMonitor || showFileSelector || fileSelectorParamName != null || ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1)) {
                         IconButton(onClick = {
                             when {
+                                showMonitor -> showMonitor = false
                                 showFileSelector -> showFileSelector = false
                                 fileSelectorParamName != null -> fileSelectorParamName = null
                                 onlineUrl != null -> onlineUrl = null
@@ -218,7 +221,9 @@ fun KrScriptApp() {
             }
         }
     ) { padding ->
-        if (showFileSelector || fileSelectorParamName != null) {
+        if (showMonitor) {
+            MonitorScreen(onBack = { showMonitor = false })
+        } else if (showFileSelector || fileSelectorParamName != null) {
             FileSelectorScreen(
                 onBack = {
                     showFileSelector = false
@@ -241,7 +246,8 @@ fun KrScriptApp() {
                 contentPadding = padding,
                 context = context,
                 onOpenPowerMenu = { showPowerMenu = true },
-                onOpenFileSelector = { showFileSelector = true }
+                onOpenFileSelector = { showFileSelector = true },
+                onOpenMonitor = { showMonitor = true }
             )
             1 -> {
                 val url = onlineUrl
@@ -331,6 +337,7 @@ private fun HomeScreen(
     context: Context,
     onOpenPowerMenu: () -> Unit,
     onOpenFileSelector: () -> Unit,
+    onOpenMonitor: () -> Unit,
 ) {
     val battery = remember {
         val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
@@ -403,6 +410,53 @@ private fun HomeScreen(
         TextButton(
             text = "打开文件选择器",
             onClick = onOpenFileSelector,
+            modifier = Modifier.fillMaxWidth()
+        )
+        TextButton(
+            text = "打开性能监控",
+            onClick = onOpenMonitor,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun MonitorScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var cpuFreq by remember { mutableStateOf("读取中...") }
+    var battery by remember { mutableStateOf(-1) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            cpuFreq = try {
+                val freq = File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
+                    .readText().trim().toLongOrNull()
+                if (freq != null) "${freq / 1000} MHz" else "未知"
+            } catch (e: Exception) {
+                "未知"
+            }
+            battery = (context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
+                ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+            delay(1000)
+        }
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SmallTitle(text = "性能监控")
+        ArrowPreference(
+            title = "CPU 频率",
+            summary = cpuFreq
+        )
+        ArrowPreference(
+            title = "电池电量",
+            summary = if (battery >= 0) "$battery%" else "未知"
+        )
+        TextButton(
+            text = "返回",
+            onClick = onBack,
             modifier = Modifier.fillMaxWidth()
         )
     }
