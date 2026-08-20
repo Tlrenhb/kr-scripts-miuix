@@ -1066,9 +1066,20 @@ private class ParamUiState(
     val text: MutableState<TextFieldValue> = mutableStateOf(TextFieldValue(param.value ?: "")),
     val checked: MutableState<Boolean> = mutableStateOf(param.value == "1" || param.value == "true"),
     val floatValue: MutableState<Float> = mutableStateOf(param.value?.toFloatOrNull() ?: 0f),
-    val selectedIndex: MutableState<Int> = mutableStateOf(0),
+    val selectedIndex: MutableState<Int> = mutableStateOf(
+        param.options?.indexOfFirst { it.value == param.value }?.coerceAtLeast(0) ?: 0
+    ),
     val color: MutableState<Color> = mutableStateOf(parseColor(param.value)),
-    val selectedOptions: MutableState<Set<Int>> = mutableStateOf(emptySet()),
+    val selectedOptions: MutableState<Set<Int>> = mutableStateOf(
+        if (param.multiple && !param.value.isNullOrBlank()) {
+            val selectedValues = param.value!!.split(param.separator).map { it.trim() }.toSet()
+            param.options?.mapIndexedNotNull { index, option ->
+                if (option.value in selectedValues) index else null
+            }?.toSet() ?: emptySet()
+        } else {
+            emptySet()
+        }
+    ),
 )
 
 @Composable
