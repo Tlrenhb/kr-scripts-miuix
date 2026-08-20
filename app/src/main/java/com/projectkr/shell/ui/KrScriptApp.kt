@@ -6,6 +6,8 @@ package com.projectkr.shell.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.BatteryManager
+import android.os.Build
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -128,9 +130,14 @@ fun KrScriptApp() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = if (onlineUrl != null) onlineTitle else currentTitle,
+                title = when (selectedTab) {
+                    0 -> "首页"
+                    1 -> if (onlineUrl != null) onlineTitle else currentTitle
+                    2 -> "收藏"
+                    else -> "关于"
+                },
                 navigationIcon = {
-                    if ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 0) {
+                    if ((pageStack.isNotEmpty() || onlineUrl != null) && selectedTab == 1) {
                         IconButton(onClick = {
                             if (onlineUrl != null) {
                                 onlineUrl = null
@@ -150,7 +157,7 @@ fun KrScriptApp() {
             )
         },
         floatingActionButton = {
-            if (selectedTab == 1) {
+            if (selectedTab == 0) {
                 FloatingActionButton(onClick = { showPowerMenu = true }) {
                     Icon(MiuixIcons.Settings, "电源菜单")
                 }
@@ -162,13 +169,13 @@ fun KrScriptApp() {
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     icon = MiuixIcons.Home,
-                    label = "页面"
+                    label = "首页"
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = MiuixIcons.Info,
-                    label = "关于"
+                    icon = MiuixIcons.VerticalSplit,
+                    label = "页面"
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
@@ -176,61 +183,71 @@ fun KrScriptApp() {
                     icon = MiuixIcons.Favorites,
                     label = "收藏"
                 )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = MiuixIcons.Info,
+                    label = "关于"
+                )
             }
         }
     ) { padding ->
-        if (selectedTab == 0) {
-            val url = onlineUrl
-            if (url != null) {
-                OnlinePageScreen(url = url)
-            } else {
-            NodeListScreen(
-                nodes = currentNodes,
+        when (selectedTab) {
+            0 -> HomeScreen(
                 contentPadding = padding,
                 context = context,
-                shellRunner = shellRunner,
-                onActionClick = { actionForParams = it },
-                onAddFavorite = { node ->
-                    val key = node.key.ifEmpty { node.title }
-                    if (favorites.none { it.key == key && key.isNotEmpty() }) {
-                        favorites.add(
-                            FavoriteItem(
-                                key = key,
-                                title = node.title,
-                                summary = node.summary.ifEmpty { node.desc }
-                            )
-                        )
-                        saveFavorites()
-                        Toast.makeText(context, "已收藏", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "已在收藏中", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                onPageClick = { page ->
-                    val path = page.pageConfigPath
-                    if (path.isNotBlank()) {
-                        val childNodes = reader.readConfigXml(path, page.pageConfigDir) ?: emptyList()
-                        if (childNodes.isNotEmpty()) {
-                            pageStack.add(currentTitle to currentNodes)
-                            currentNodes = childNodes
-                            currentTitle = page.title
-                        }
-                    } else {
-                        Toast.makeText(context, "此页面没有配置子页面", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                onOpenPowerMenu = { showPowerMenu = true }
             )
-                ActionParamsDialog(
-                    action = actionForParams,
-                    context = context,
-                    shellRunner = shellRunner,
-                    onDismiss = { actionForParams = null }
-                )
+            1 -> {
+                val url = onlineUrl
+                if (url != null) {
+                    OnlinePageScreen(url = url)
+                } else {
+                    NodeListScreen(
+                        nodes = currentNodes,
+                        contentPadding = padding,
+                        context = context,
+                        shellRunner = shellRunner,
+                        onActionClick = { actionForParams = it },
+                        onAddFavorite = { node ->
+                            val key = node.key.ifEmpty { node.title }
+                            if (favorites.none { it.key == key && key.isNotEmpty() }) {
+                                favorites.add(
+                                    FavoriteItem(
+                                        key = key,
+                                        title = node.title,
+                                        summary = node.summary.ifEmpty { node.desc }
+                                    )
+                                )
+                                saveFavorites()
+                                Toast.makeText(context, "已收藏", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "已在收藏中", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onPageClick = { page ->
+                            val path = page.pageConfigPath
+                            if (path.isNotBlank()) {
+                                val childNodes = reader.readConfigXml(path, page.pageConfigDir) ?: emptyList()
+                                if (childNodes.isNotEmpty()) {
+                                    pageStack.add(currentTitle to currentNodes)
+                                    currentNodes = childNodes
+                                    currentTitle = page.title
+                                }
+                            } else {
+                                Toast.makeText(context, "此页面没有配置子页面", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+                    ActionParamsDialog(
+                        action = actionForParams,
+                        context = context,
+                        shellRunner = shellRunner,
+                        onDismiss = { actionForParams = null }
+                    )
+                }
             }
-        } else if (selectedTab == 1) {
-            AboutScreen(contentPadding = padding)
-        } else {
-            FavoritesScreen(
+            2 -> FavoritesScreen(
                 favorites = favorites,
                 contentPadding = padding,
                 onRemove = {
@@ -242,12 +259,56 @@ fun KrScriptApp() {
                     Toast.makeText(context, "已请求创建快捷方式", Toast.LENGTH_SHORT).show()
                 }
             )
+            else -> AboutScreen(contentPadding = padding)
         }
         PowerMenuDialog(
             show = showPowerMenu,
             context = context,
             shellRunner = shellRunner,
             onDismiss = { showPowerMenu = false }
+        )
+    }
+}
+
+@Composable
+private fun HomeScreen(
+    contentPadding: PaddingValues,
+    context: Context,
+    onOpenPowerMenu: () -> Unit,
+) {
+    val battery = remember {
+        val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+        manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+    }
+    val cores = remember { Runtime.getRuntime().availableProcessors() }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SmallTitle(text = "设备信息")
+        ArrowPreference(
+            title = "型号",
+            summary = "${Build.MANUFACTURER} ${Build.MODEL}"
+        )
+        ArrowPreference(
+            title = "Android 版本",
+            summary = Build.VERSION.RELEASE
+        )
+        ArrowPreference(
+            title = "CPU 核心数",
+            summary = "$cores"
+        )
+        ArrowPreference(
+            title = "电池电量",
+            summary = if (battery >= 0) "$battery%" else "未知"
+        )
+        SmallTitle(text = "快捷操作")
+        TextButton(
+            text = "打开电源菜单",
+            onClick = onOpenPowerMenu,
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
