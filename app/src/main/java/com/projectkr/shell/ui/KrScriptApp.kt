@@ -313,6 +313,15 @@ private fun HomeScreen(
         manager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
     }
     val cores = remember { Runtime.getRuntime().availableProcessors() }
+    val cpuFreq = remember {
+        try {
+            val freq = File("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
+                .readText().trim().toLongOrNull()
+            if (freq != null) "${freq / 1000} MHz" else "未知"
+        } catch (e: Exception) {
+            "未知"
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -331,6 +340,10 @@ private fun HomeScreen(
         ArrowPreference(
             title = "CPU 核心数",
             summary = "$cores"
+        )
+        ArrowPreference(
+            title = "CPU 频率",
+            summary = cpuFreq
         )
         ArrowPreference(
             title = "电池电量",
