@@ -1,16 +1,22 @@
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
 *.iml
-.gradle
-.idea
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
 local.properties
-.idea/workspace.xml
-.idea/libraries
+
+# OS
 .DS_Store
-build
-pio/build
-krscript/build
-common/build
-captures
-release
-release_mini
-gradle
-app/build.gradle
+Thumbs.db
+
+# Android
+captures/
+.externalNativeBuild/
+.cxx/
