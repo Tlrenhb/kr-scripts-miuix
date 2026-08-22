@@ -18,6 +18,7 @@ object PageLoader {
 
     /** Loads the top page list defined by `page_list_config` in kr-script.conf. */
     fun loadTopPage(): List<NodeInfoBase> {
+        if (!com.projectkr.shell.runtime.KrScriptRuntime.isReady) return emptyList()
         val confMap = readConf()
         val page = PageNode("").apply {
             pageConfigPath = confMap.getOrDefault(
@@ -47,6 +48,7 @@ object PageLoader {
      */
     fun loadSubPage(page: PageNode): List<NodeInfoBase>? {
         val runtime = com.projectkr.shell.runtime.KrScriptRuntime
+        if (!runtime.isReady) return null
         if (page.beforeRead.isNotEmpty()) {
             runtime.scriptEnv.executeResult(page.beforeRead, page)
         }

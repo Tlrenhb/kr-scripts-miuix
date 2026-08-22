@@ -37,8 +37,10 @@ object ScriptActions {
     }
 
     /** Quick synchronous script run (switch/picker set, lock checks…). */
-    fun eval(script: String?, node: NodeInfoBase?): String =
-        KrScriptRuntime.scriptEnv.executeResult(script, node)
+    fun eval(script: String?, node: NodeInfoBase?): String {
+        if (!KrScriptRuntime.isReady) return ""
+        return KrScriptRuntime.scriptEnv.executeResult(script, node)
+    }
 
     /**
      * Starts [script] with [params] in a dedicated streaming process.
@@ -50,6 +52,12 @@ object ScriptActions {
             node = node,
             script = script,
         )
+        if (!KrScriptRuntime.isReady) {
+            session.lines.add(LogLine("脚本引擎尚未初始化完成，请稍后重试", true))
+            session.running = false
+            session.exitCode = -1
+            return session
+        }
         val runner = ScriptProcessRunner(
             environment = KrScriptRuntime.scriptEnv,
             extractor = KrScriptRuntime.extractor,

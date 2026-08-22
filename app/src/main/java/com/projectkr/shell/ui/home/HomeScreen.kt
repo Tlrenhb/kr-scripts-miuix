@@ -119,15 +119,6 @@ fun HomeScreen(
     var powerMenu by remember { mutableStateOf(false) }
     var session by remember { mutableStateOf<ScriptActions.Session?>(null) }
 
-    session?.let { active ->
-        LogDialog(session = active, show = true, onClose = { session = null })
-        LaunchedEffect(active) {
-            while (active.running) delay(300)
-            delay(1200)
-            session = null
-        }
-    }
-
     val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         modifier = modifier,
@@ -245,25 +236,35 @@ fun HomeScreen(
                 }
             }
         }
-    }
 
-    PowerMenuDialog(
-        show = powerMenu,
-        rooted = rooted,
-        onDismiss = { powerMenu = false },
-        onStartAction = { action ->
-            val node = RunnableNode("").apply {
-                this.title = action.label
-                this.setState = action.command
+        // Overlay dialogs must stay inside the Scaffold popup host.
+        session?.let { active ->
+            LogDialog(session = active, show = true, onClose = { session = null })
+            LaunchedEffect(active) {
+                while (active.running) delay(300)
+                delay(1200)
+                session = null
             }
-            scope.launch {
-                val s = withContext(Dispatchers.IO) {
-                    ScriptActions.stream(node, node.setState.orEmpty())
+        }
+
+        PowerMenuDialog(
+            show = powerMenu,
+            rooted = rooted,
+            onDismiss = { powerMenu = false },
+            onStartAction = { action ->
+                val node = RunnableNode("").apply {
+                    this.title = action.label
+                    this.setState = action.command
                 }
-                session = s
-            }
-        },
-    )
+                scope.launch {
+                    val psession = withContext(Dispatchers.IO) {
+                        ScriptActions.stream(node, node.setState.orEmpty())
+                    }
+                    session = psession
+                }
+            },
+        )
+    }
 }
 
 @Composable

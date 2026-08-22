@@ -16,10 +16,25 @@ class KrApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        installCrashLogger()
         Thread {
             val ok = KrScriptRuntime.init(this@KrApplication as Context)
             if (!ok) Log.e(TAG, "KrScript runtime init failed")
         }.start()
+    }
+
+    /** Persists the latest crash to files/crash.txt for bug reports. */
+    private fun installCrashLogger() {
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            runCatching {
+                java.io.File(filesDir, "crash.txt").writeText(
+                    "thread=" + thread.name + "\n" +
+                        android.util.Log.getStackTraceString(throwable),
+                )
+            }
+            previous?.uncaughtException(thread, throwable)
+        }
     }
 
     companion object {

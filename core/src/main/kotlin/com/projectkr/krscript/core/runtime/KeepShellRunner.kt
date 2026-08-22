@@ -44,6 +44,15 @@ class KeepShellRunner(private val rootMode: Boolean = true) : ShellRunner {
         } ?: return
         writer = process!!.outputStream
         reader = process!!.inputStream.bufferedReader()
+        // Drain stderr continuously; an undrained pipe can deadlock the shell
+        // once its buffer fills (the original KeepShell did the same).
+        val errStream = process!!.errorStream
+        Thread {
+            try {
+                errStream.bufferedReader().forEachLine { /* discarded */ }
+            } catch (_: Exception) {
+            }
+        }.apply { isDaemon = true }.start()
     }
 
     /** Destroys the underlying process; the next [execute] starts a fresh one. */
