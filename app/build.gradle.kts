@@ -41,13 +41,19 @@ kotlin {
 dependencies {
     implementation(project(":core"))
 
-    implementation(platform("androidx.compose:compose-bom:2025.06.01"))
-    implementation("androidx.activity:activity-compose:1.10.1")
+    // Compose stack pinned to the exact versions Miuix 0.9.4-rc01 was compiled
+    // against: upstream pairs JB Compose Multiplatform 1.12.0-rc01, whose
+    // foundation maps to androidx.compose 1.12.0-rc01 (see upstream
+    // gradle/libs.versions.toml). Older runtimes crash on interactive paths.
+    val composeVersion = "1.12.0-rc01"
+    implementation("androidx.compose.ui:ui:$composeVersion")
+    implementation("androidx.compose.ui:ui-tooling-preview:$composeVersion")
+    implementation("androidx.compose.foundation:foundation:$composeVersion")
+    debugImplementation("androidx.compose.ui:ui-tooling:$composeVersion")
+
+    implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.core:core-ktx:1.16.0")
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.foundation:foundation")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.5.1")
 
     // Miuix (HyperOS design) — https://github.com/compose-miuix-ui/miuix
     implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.4-rc01")
