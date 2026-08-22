@@ -110,6 +110,22 @@ class ScriptEnvironment(
         return shell.execute(sb.toString())
     }
 
+    /**
+     * Builds the `<executor> "<cached-script>" "<tag>"` invocation for a dedicated
+     * streaming process (used by [com.projectkr.krscript.core.exec.ScriptProcessRunner]);
+     * empty when not inited or the script is empty.
+     */
+    fun executorCommand(script: String, tag: String): String {
+        if (!inited || script.isEmpty()) return ""
+        val trimmed = script.trim()
+        val cachePath = if (trimmed.startsWith(ASSETS_PREFIX)) {
+            extractScript(trimmed)
+        } else {
+            createShellCache(script)
+        }
+        return "$environmentPath \"$cachePath\" \"$tag\""
+    }
+
     /** Caches an inline script as `<md5>.sh`; returns its absolute path. */
     private fun createShellCache(script: String): String {
         val rel = "kr-script/cache/${md5(script)}.sh"
