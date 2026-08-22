@@ -53,6 +53,8 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-ui-android:0.9.4-rc01")
     implementation("top.yukonga.miuix.kmp:miuix-preference-android:0.9.4-rc01")
     implementation("top.yukonga.miuix.kmp:miuix-icons-android:0.9.4-rc01")
+    implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4-rc01")
+    implementation("top.yukonga.miuix.kmp:miuix-squircle-android:0.9.4-rc01")
     implementation("top.yukonga.miuix.kmp:miuix-nav-android:0.9.4-rc01")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
