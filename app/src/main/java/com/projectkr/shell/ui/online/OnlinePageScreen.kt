@@ -4,12 +4,17 @@
 package com.projectkr.shell.ui.online
 
 import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import com.projectkr.krscript.core.model.NodeInfoBase
+import com.projectkr.shell.runtime.KrScriptRuntime
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -18,8 +23,12 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 
 /**
- * Online html page rendered in a WebView (original ActionPageOnline).
- * The JS bridge (WebViewInjector port) is added in the online phase.
+ * Online html page rendered in a WebView with the `KrScriptCore` JS bridge —
+ * port of the original ActionPageOnline + WebViewInjector contract:
+ *
+ *  - `KrScriptCore.rootCheck(): boolean`
+ *  - `KrScriptCore.executeShell(script): string` (synchronous, executor.sh)
+ *  - `KrScriptCore.extractAssets(assetRef): string` → absolute extracted path
  */
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -45,8 +54,9 @@ fun OnlinePageScreen(
         AndroidView(
             factory = { context ->
                 WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
+                    configureSettings()
+                    addJavascriptInterface(JsBridge(), "KrScriptCore")
+                    webChromeClient = WebChromeClient()
                     loadUrl(url)
                 }
             },
@@ -54,5 +64,42 @@ fun OnlinePageScreen(
                 .fillMaxSize()
                 .padding(inner),
         )
+    }
+}
+
+private fun WebView.configureSettings() {
+    settings.javaScriptEnabled = true
+    settings.domStorageEnabled = true
+    settings.useWideViewPort = true
+    settings.allowContentAccess = true
+    if (url.startsWith("file:")) {
+        // Local pages keep file access only when explicitly credible.
+        settings.allowFileAccess = true
+    }
+}
+
+/**
+ * JS-facing engine bound as `window.KrScriptCore`. Methods run on a WebView
+ * background thread (JavascriptInterface contract) so blocking shell calls are
+ * acceptable here, matching the original implementation.
+ */
+class JsBridge {
+
+    private val virtualRoot = NodeInfoBase("")
+
+    @JavascriptInterface
+    fun rootCheck(): Boolean =
+        KrScriptRuntime.isReady && KrScriptRuntime.rooted
+
+    @JavascriptInterface
+    fun executeShell(script: String?): String {
+        if (!KrScriptRuntime.isReady || script.isNullOrEmpty()) return ""
+        return KrScriptRuntime.scriptEnv.executeResult(script, virtualRoot)
+    }
+
+    @JavascriptInterface
+    fun extractAssets(assetRef: String?): String {
+        if (!KrScriptRuntime.isReady || assetRef.isNullOrEmpty()) return ""
+        return KrScriptRuntime.extractor.extractResource(assetRef).orEmpty()
     }
 }

@@ -4,8 +4,6 @@
 package com.projectkr.shell.ui
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,10 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.shell.navigation.Route
 import com.projectkr.shell.ui.fileselector.FileSelectorScreen
+import com.projectkr.shell.ui.about.AboutScreen
 import com.projectkr.shell.ui.home.HomeScreen
 import com.projectkr.shell.ui.monitor.MonitorScreen
 import com.projectkr.shell.ui.online.OnlinePageScreen
 import com.projectkr.shell.ui.pages.PageDetailScreen
+import com.projectkr.shell.ui.pages.FavoritesScreen
 import com.projectkr.shell.ui.pages.PagesScreen
 import com.projectkr.shell.ui.theme.KrColorMode
 import com.projectkr.shell.ui.theme.loadColorMode
@@ -29,7 +29,6 @@ import com.projectkr.shell.ui.theme.saveColorMode
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Home
@@ -162,20 +161,15 @@ private fun MainTabsScreen(
             1 -> Box(Modifier.padding(innerPadding)) {
                 PagesScreen(backStack = backStack)
             }
-            else -> PlaceholderTab(tabs[selectedTab].label, innerPadding)
+            2 -> Box(Modifier.padding(innerPadding)) {
+                FavoritesScreen(backStack = backStack)
+            }
+            else -> Box(Modifier.padding(innerPadding)) {
+                AboutScreen(
+                    colorMode = colorMode,
+                    onColorModeChange = onColorModeChange,
+                )
+            }
         }
-    }
-}
-
-/** Temporary stand-in for tabs completed in later phases. */
-@Composable
-private fun PlaceholderTab(label: String, innerPadding: PaddingValues) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text = label)
     }
 }
