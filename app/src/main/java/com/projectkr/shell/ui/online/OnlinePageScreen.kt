@@ -54,7 +54,7 @@ fun OnlinePageScreen(
         AndroidView(
             factory = { context ->
                 WebView(context).apply {
-                    configureSettings()
+                    configureSettings(url)
                     addJavascriptInterface(JsBridge(), "KrScriptCore")
                     webChromeClient = WebChromeClient()
                     loadUrl(url)
@@ -67,12 +67,12 @@ fun OnlinePageScreen(
     }
 }
 
-private fun WebView.configureSettings() {
+private fun WebView.configureSettings(pageUrl: String) {
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
     settings.useWideViewPort = true
     settings.allowContentAccess = true
-    if (url.startsWith("file:")) {
+    if (pageUrl.startsWith("file:")) {
         // Local pages keep file access only when explicitly credible.
         settings.allowFileAccess = true
     }
