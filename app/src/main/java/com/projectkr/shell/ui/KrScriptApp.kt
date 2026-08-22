@@ -40,8 +40,12 @@ import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.ListView
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
+import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
 import top.yukonga.miuix.kmp.nav.core.NavKey
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
+import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
+import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
+import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private data class TabItem(
@@ -78,6 +82,14 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
         NavDisplay(
             backStack = backStack,
             onBack = onBack,
+            // Miuix motion system: slide+parallax transitions, device-corner
+            // clipping while pages animate over each other, input blocked
+            // mid-transition, and edge-swipe back on pushed pages.
+            transition = NavTransitions.MiuixDefault,
+            effects = NavDisplayEffects(
+                cornerClipRadius = rememberNavSystemCornerRadius(),
+                blockInputDuringTransition = true,
+            ),
         ) {
             entry<Route.MainTabs> {
                 MainTabsScreen(
@@ -90,7 +102,9 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
                 )
             }
 
-            entry<Route.PageDetail> { route ->
+            entry<Route.PageDetail>(
+                swipeDismiss = NavSwipeDirection.LeftToRight,
+            ) { route ->
                 PageDetailScreen(
                     configPath = route.configPath,
                     title = route.title,
@@ -99,7 +113,9 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
                 )
             }
 
-            entry<Route.OnlinePage> { route ->
+            entry<Route.OnlinePage>(
+                swipeDismiss = NavSwipeDirection.LeftToRight,
+            ) { route ->
                 OnlinePageScreen(
                     url = route.url,
                     title = route.title,
@@ -107,11 +123,17 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
                 )
             }
 
-            entry<Route.Monitor> {
+            entry<Route.Monitor>(
+                swipeDismiss = NavSwipeDirection.LeftToRight,
+            ) {
                 MonitorScreen(onBack = onBack)
             }
 
-            entry<Route.FileSelector> { route ->
+            // Sheet-like: slides bottom-up, dismiss by dragging down.
+            entry<Route.FileSelector>(
+                transition = NavTransitions.Modal,
+                swipeDismiss = NavSwipeDirection.TopToBottom,
+            ) { route ->
                 FileSelectorScreen(
                     startDir = route.startDir,
                     onBack = onBack,
@@ -161,18 +183,23 @@ private fun MainTabsScreen(
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
         ) {
-            when (selectedTab) {
-                0 -> HomeScreen(
-                    rooted = com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
-                        com.projectkr.shell.runtime.KrScriptRuntime.rooted,
-                    onOpenFileSelector = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
-                )
-                1 -> PagesScreen(backStack = backStack)
-                2 -> FavoritesScreen(backStack = backStack)
-                else -> AboutScreen(
-                    colorMode = colorMode,
-                    onColorModeChange = onColorModeChange,
-                )
+            androidx.compose.animation.Crossfade(
+                targetState = selectedTab,
+                label = "tab-switch",
+            ) { tab ->
+                when (tab) {
+                    0 -> HomeScreen(
+                        rooted = com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
+                            com.projectkr.shell.runtime.KrScriptRuntime.rooted,
+                        onOpenFileSelector = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
+                    )
+                    1 -> PagesScreen(backStack = backStack)
+                    2 -> FavoritesScreen(backStack = backStack)
+                    else -> AboutScreen(
+                        colorMode = colorMode,
+                        onColorModeChange = onColorModeChange,
+                    )
+                }
             }
         }
     }
