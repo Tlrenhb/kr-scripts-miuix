@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import com.projectkr.shell.shortcut.ShortcutHelper
 import com.projectkr.shell.ui.KrScriptApp
 
 class MainActivity : ComponentActivity() {

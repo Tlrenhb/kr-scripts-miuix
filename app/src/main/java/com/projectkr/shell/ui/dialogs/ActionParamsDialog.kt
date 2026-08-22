@@ -116,6 +116,7 @@ private fun ActionParamsDialogContent(
                 param = param,
                 value = draft[param.name.orEmpty()].orEmpty(),
                 options = param.options ?: selectOptions[param.name.orEmpty()] ?: emptyList(),
+                onPickColor = { colorPickParam = param.name.orEmpty() },
                 onPickClick = {
                     pendingFileParam = param.name.orEmpty()
                     filePicker.launch(arrayOf("*/*"))
@@ -155,6 +156,7 @@ private fun ParamField(
     param: ActionParamInfo,
     value: String,
     options: List<SelectItem>,
+    onPickColor: () -> Unit,
     onPickClick: () -> Unit,
     onValueChange: (String) -> Unit,
 ) {
@@ -236,7 +238,7 @@ private fun ParamField(
             ColorParamRow(
                 title = title,
                 value = value,
-                onRequestPick = { colorPickParam = param.name.orEmpty() },
+                onRequestPick = onPickColor,
             )
         }
         "file" -> {
