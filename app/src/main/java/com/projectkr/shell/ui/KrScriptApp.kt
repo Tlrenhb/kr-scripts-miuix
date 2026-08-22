@@ -4,6 +4,7 @@
 package com.projectkr.shell.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -15,6 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.shell.navigation.Route
+import com.projectkr.shell.ui.fileselector.FileSelectorScreen
+import com.projectkr.shell.ui.monitor.MonitorScreen
+import com.projectkr.shell.ui.online.OnlinePageScreen
+import com.projectkr.shell.ui.pages.PageDetailScreen
+import com.projectkr.shell.ui.pages.PagesScreen
 import com.projectkr.shell.ui.theme.KrColorMode
 import com.projectkr.shell.ui.theme.loadColorMode
 import com.projectkr.shell.ui.theme.rememberThemeController
@@ -29,6 +35,7 @@ import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.ListView
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
+import top.yukonga.miuix.kmp.nav.core.NavKey
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -49,10 +56,11 @@ fun KrScriptApp() {
 
     MiuixTheme(controller = controller) {
         val backStack = rememberNavBackStack<Route>(Route.MainTabs)
+        val onBack: () -> Unit = { backStack.removeLastOrNull() }
 
         NavDisplay(
             backStack = backStack,
-            onBack = { backStack.removeLastOrNull() },
+            onBack = onBack,
         ) {
             entry<Route.MainTabs> {
                 MainTabsScreen(
@@ -61,6 +69,35 @@ fun KrScriptApp() {
                         colorMode = it
                         saveColorMode(context, it)
                     },
+                    backStack = backStack,
+                )
+            }
+
+            entry<Route.PageDetail> { route ->
+                PageDetailScreen(
+                    configPath = route.configPath,
+                    title = route.title,
+                    nodeKey = route.nodeKey,
+                    backStack = backStack,
+                )
+            }
+
+            entry<Route.OnlinePage> { route ->
+                OnlinePageScreen(
+                    url = route.url,
+                    title = route.title,
+                    onBack = onBack,
+                )
+            }
+
+            entry<Route.Monitor> {
+                MonitorScreen(onBack = onBack)
+            }
+
+            entry<Route.FileSelector> { route ->
+                FileSelectorScreen(
+                    startDir = route.startDir,
+                    onBack = onBack,
                 )
             }
         }
@@ -75,6 +112,7 @@ fun KrScriptApp() {
 private fun MainTabsScreen(
     colorMode: KrColorMode,
     onColorModeChange: (KrColorMode) -> Unit,
+    backStack: MutableList<NavKey>,
 ) {
     val tabs = listOf(
         TabItem("首页", MiuixIcons.Home),
@@ -98,19 +136,24 @@ private fun MainTabsScreen(
             }
         },
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center,
-        ) {
-            val title = when (selectedTab) {
-                0 -> "首页"
-                1 -> "页面"
-                2 -> "收藏"
-                else -> "关于"
+        when (selectedTab) {
+            1 -> Box(Modifier.padding(innerPadding)) {
+                PagesScreen(backStack = backStack)
             }
-            Text(text = title)
+            else -> PlaceholderTab(tabs[selectedTab].label, innerPadding)
         }
+    }
+}
+
+/** Temporary stand-in for tabs completed in later phases. */
+@Composable
+private fun PlaceholderTab(label: String, innerPadding: PaddingValues) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = label)
     }
 }

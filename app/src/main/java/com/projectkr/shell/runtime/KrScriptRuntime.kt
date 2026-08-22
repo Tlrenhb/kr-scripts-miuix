@@ -27,6 +27,15 @@ object KrScriptRuntime {
     lateinit var scriptEnv: ScriptEnvironment
         private set
 
+    lateinit var extractor: com.projectkr.krscript.core.runtime.AssetExtractor
+        private set
+
+    lateinit var assetSource: com.projectkr.krscript.core.runtime.AssetSource
+        private set
+
+    lateinit var fileStore: PrivateFileStore
+        private set
+
     val rooted: Boolean get() = shell.rooted
 
     /** Evaluator used by PageConfigReader while parsing configs. */
@@ -81,8 +90,11 @@ object KrScriptRuntime {
                 File(appContext.filesDir, relPath).setExecutable(true)
         }
 
-        val extractor = com.projectkr.krscript.core.runtime.DefaultAssetExtractor(assets, files)
-        scriptEnv = ScriptEnvironment(shell, assets, files, extractor)
+        val extractorImpl = com.projectkr.krscript.core.runtime.DefaultAssetExtractor(assets, files)
+        extractor = extractorImpl
+        assetSource = assets
+        fileStore = files
+        scriptEnv = ScriptEnvironment(shell, assets, files, extractorImpl)
 
         // kr-script.conf drives executor/toolkit selection; fall back to defaults.
         val conf = runCatching {
