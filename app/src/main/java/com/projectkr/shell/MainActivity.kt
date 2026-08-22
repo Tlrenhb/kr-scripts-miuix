@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
         if (config.isNotEmpty()) {
             shortcutLaunch.value = ShortcutLaunch(
                 configPath = config,
-                title = intent.getStringExtra(ShortcutHelper.EXTRA_TITLE).orEmpty(),
+                title = intent?.getStringExtra(ShortcutHelper.EXTRA_TITLE).orEmpty(),
             )
         }
     }

@@ -116,6 +116,26 @@ fun NodeListContent(
 }
 
 @Composable
+private fun GroupSection(group: GroupNode, callbacks: NodeListCallbacks) {
+    if (!group.supported) return
+    SmallTitle(text = group.title)
+    Card(
+        modifier = Modifier
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 12.dp),
+    ) {
+        group.children.forEach { child ->
+            when (child) {
+                is SwitchNode -> SwitchRow(child, callbacks)
+                is PickerNode -> PickerRow(child, callbacks)
+                is ActionNode -> ArrowAction(child, callbacks)
+                is PageNode -> PageRow(child, callbacks)
+            }
+        }
+    }
+}
+
+@Composable
 private fun NodeCard(content: @Composable () -> Unit) {
     Card(
         modifier = Modifier

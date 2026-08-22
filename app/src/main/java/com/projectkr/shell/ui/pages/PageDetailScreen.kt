@@ -133,7 +133,6 @@ fun PageDetailScreen(
             NodeScreenBody(
                 controller = controller,
                 nodes = content.nodes ?: emptyList(),
-                onPickFile = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
