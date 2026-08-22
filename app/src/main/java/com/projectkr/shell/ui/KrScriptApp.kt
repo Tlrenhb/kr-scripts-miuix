@@ -56,7 +56,21 @@ fun KrScriptApp() {
     val controller = rememberThemeController(colorMode)
 
     MiuixTheme(controller = controller) {
-        val backStack = rememberNavBackStack<Route>(Route.MainTabs)
+        // Launcher shortcuts deep-link straight into a page detail.
+        val initialRoutes = remember {
+            val cfg = (context as? android.app.Activity)?.intent?.getStringExtra(
+                com.projectkr.shell.shortcut.ShortcutHelper.EXTRA_CONFIG
+            ).orEmpty()
+            val shortcutTitle = (context as? android.app.Activity)?.intent?.getStringExtra(
+                com.projectkr.shell.shortcut.ShortcutHelper.EXTRA_TITLE
+            ).orEmpty()
+            if (cfg.isNotEmpty()) {
+                listOf<Route>(Route.MainTabs, Route.PageDetail(cfg, shortcutTitle, ""))
+            } else {
+                listOf<Route>(Route.MainTabs)
+            }
+        }
+        val backStack = rememberNavBackStack<Route>(*initialRoutes.toTypedArray())
         val onBack: () -> Unit = { backStack.removeLastOrNull() }
 
         NavDisplay(

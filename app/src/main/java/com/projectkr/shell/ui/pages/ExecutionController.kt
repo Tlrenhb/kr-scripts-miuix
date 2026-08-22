@@ -21,9 +21,23 @@ import kotlinx.coroutines.launch
 class ExecutionController(
     private val scope: CoroutineScope,
     private val openPage: (PageNode) -> Unit,
+    private val storeProvider: (() -> com.projectkr.shell.favorites.FavoritesStore)? = null,
 ) : NodeListCallbacks {
 
     override fun onPage(node: PageNode) = openPage(node)
+
+    override fun canFavorite(node: com.projectkr.krscript.core.model.NodeInfoBase): Boolean =
+        storeProvider != null &&
+            node.currentPageConfigPath.isNotEmpty() &&
+            node.key.isNotEmpty()
+
+    override fun isFavorite(node: com.projectkr.krscript.core.model.NodeInfoBase): Boolean =
+        storeProvider?.invoke()
+            ?.isFavorite(node.currentPageConfigPath, node.key) ?: false
+
+    override fun toggleFavorite(node: com.projectkr.krscript.core.model.NodeInfoBase) {
+        storeProvider?.invoke()?.toggle(node.currentPageConfigPath, node.key, node.title)
+    }
 
     var confirmRequest by mutableStateOf<RunnableNode?>(null)
         private set

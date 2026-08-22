@@ -49,9 +49,11 @@ fun PagesScreen(
     val content = rememberPageContent(reloadKey) { PageLoader.loadTopPage() }
 
     val controller = remember(content.scope) {
-        ExecutionController(scope = content.scope) { node ->
-            openPageNode(context, node, backStack)
-        }
+        ExecutionController(
+            scope = content.scope,
+            openPage = { node -> openPageNode(context, node, backStack) },
+            storeProvider = { com.projectkr.shell.favorites.FavoritesStore(context) },
+        )
     }
 
     val scrollBehavior = MiuixScrollBehavior()

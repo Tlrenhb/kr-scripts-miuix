@@ -33,12 +33,19 @@ import com.projectkr.krscript.core.model.TextNode
 import com.projectkr.shell.runtime.ScriptActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.layout.size
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Favorites
+import top.yukonga.miuix.kmp.icon.extended.FavoritesFill
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * Callbacks the node list needs from its host screen.
@@ -52,6 +59,13 @@ interface NodeListCallbacks {
 
     /** Opens a page node (sub config / html / link / activity). */
     fun onPage(node: PageNode)
+
+    /** Whether the favorite star should be offered for this node. */
+    fun canFavorite(node: NodeInfoBase): Boolean = false
+
+    fun isFavorite(node: NodeInfoBase): Boolean = false
+
+    fun toggleFavorite(node: NodeInfoBase) {}
 }
 
 /**
@@ -138,7 +152,23 @@ private fun SwitchRow(node: SwitchNode, callbacks: NodeListCallbacks) {
             checked = value
             callbacks.onRunnable(node, mapOf("state" to if (value) "1" else "0"))
         },
+        endActions = { FavoriteStar(node, callbacks) },
     )
+}
+
+/** Star toggle shown when [NodeListCallbacks.canFavorite] allows it. */
+@Composable
+fun FavoriteStar(node: NodeInfoBase, callbacks: NodeListCallbacks) {
+    if (!callbacks.canFavorite(node)) return
+    val favorited = callbacks.isFavorite(node)
+    IconButton(onClick = { callbacks.toggleFavorite(node) }) {
+        Icon(
+            imageVector = if (favorited) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
+            contentDescription = if (favorited) "取消收藏" else "收藏",
+            tint = if (favorited) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.size(18.dp),
+        )
+    }
 }
 
 @Composable
@@ -165,6 +195,7 @@ private fun PickerRow(node: PickerNode, callbacks: NodeListCallbacks) {
                 callbacks.onRunnable(node, mapOf("state" to options[index].value.orEmpty()))
             }
         },
+        endActions = { FavoriteStar(node, callbacks) },
     )
 }
 
@@ -174,6 +205,7 @@ private fun ArrowAction(node: ActionNode, callbacks: NodeListCallbacks) {
         title = node.title,
         summary = node.summary.ifEmpty { node.desc },
         onClick = { callbacks.onRunnable(node, emptyMap()) },
+        endActions = { FavoriteStar(node, callbacks) },
     )
 }
 
@@ -183,6 +215,7 @@ private fun PageRow(node: PageNode, callbacks: NodeListCallbacks) {
         title = node.title,
         summary = node.summary.ifEmpty { node.desc },
         onClick = { callbacks.onPage(node) },
+        endActions = { FavoriteStar(node, callbacks) },
     )
 }
 
