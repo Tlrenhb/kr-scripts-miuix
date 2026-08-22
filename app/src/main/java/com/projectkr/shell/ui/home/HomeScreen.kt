@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.projectkr.krscript.core.model.RunnableNode
@@ -76,6 +77,9 @@ fun HomeScreen(
     var batteryLevel by remember { mutableIntStateOf(-1) }
     var batteryTemp by remember { mutableStateOf(Float.NaN) }
     var coreFreqs by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var floatSummary by remember {
+        mutableStateOf(if (com.projectkr.shell.service.FloatMonitor.running) "运行中 · 点击停止" else "在桌面显示 CPU/RAM 悬浮窗")
+    }
     val cpuSamples = remember { mutableStateListOf<Float>() }
     val memSamples = remember { mutableStateListOf<Float>() }
 
@@ -110,6 +114,7 @@ fun HomeScreen(
         }
     }
 
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var powerMenu by remember { mutableStateOf(false) }
     var session by remember { mutableStateOf<ScriptActions.Session?>(null) }
@@ -220,6 +225,18 @@ fun HomeScreen(
 
             item {
                 Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                    ArrowPreference(
+                        title = "悬浮窗监控",
+                        summary = floatSummary,
+                        onClick = {
+                            com.projectkr.shell.service.FloatMonitor.toggle(context)
+                            floatSummary = if (com.projectkr.shell.service.FloatMonitor.running) {
+                                "运行中 · 点击停止"
+                            } else {
+                                "在桌面显示 CPU/RAM 悬浮窗"
+                            }
+                        },
+                    )
                     ArrowPreference(
                         title = "选择文件",
                         summary = "浏览设备文件",

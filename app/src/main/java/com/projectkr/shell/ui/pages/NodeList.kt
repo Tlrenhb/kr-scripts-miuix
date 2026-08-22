@@ -195,7 +195,6 @@ private fun PickerRow(node: PickerNode, callbacks: NodeListCallbacks) {
                 callbacks.onRunnable(node, mapOf("state" to options[index].value.orEmpty()))
             }
         },
-        endActions = { FavoriteStar(node, callbacks) },
     )
 }
 

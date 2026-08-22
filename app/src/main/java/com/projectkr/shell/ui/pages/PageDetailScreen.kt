@@ -56,9 +56,10 @@ fun PageDetailScreen(
         PageLoader.loadSubPage(page)
     }
     val controller = remember(content.scope) {
-        ExecutionController(scope = content.scope) { node ->
-            openPageNode(context, node, backStack)
-        }
+        ExecutionController(
+            scope = content.scope,
+            openPage = { node -> openPageNode(context, node, backStack) },
+        )
     }
 
     // Menu options: inline list from the parent config + options-sh script.

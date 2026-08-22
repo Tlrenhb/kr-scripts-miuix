@@ -7,13 +7,16 @@ import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.krscript.core.model.GroupNode
 import com.projectkr.krscript.core.model.NodeInfoBase
+import com.projectkr.krscript.core.model.PageNode
 import com.projectkr.shell.favorites.FavoritesStore
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -28,8 +31,6 @@ import top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu
 import top.yukonga.miuix.kmp.nav.core.NavKey
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
  * The 收藏 tab: renders favorited nodes by re-parsing their source configs and
@@ -44,9 +45,10 @@ fun FavoritesScreen(
     var reloadKey by rememberSaveable { mutableIntStateOf(0) }
     val store = remember { FavoritesStore(context) }
 
-    val content = rememberPageContent(reloadKey) {
+val content = rememberPageContent(reloadKey) {
         loadFavoriteNodes(context)
     }
+
     val controller = remember(content.scope) {
         ExecutionController(
             scope = content.scope,
@@ -102,7 +104,7 @@ fun FavoritesScreen(
     }
 }
 
-private suspend fun loadFavoriteNodes(context: Context): List<NodeInfoBase> {
+private fun loadFavoriteNodes(context: Context): List<NodeInfoBase> {
     val store = FavoritesStore(context)
     val entries = store.load()
     if (entries.isEmpty()) return emptyList()
@@ -115,7 +117,7 @@ private suspend fun loadFavoriteNodes(context: Context): List<NodeInfoBase> {
     val wanted = entries.associateBy { it.configPath to it.key }
     for (configPath in wanted.keys.map { it.first }.distinct()) {
         val page = PageNode(configPath)
-        val nodes = withContext(Dispatchers.IO) { PageLoader.loadSubPage(page) } ?: continue
+        val nodes = PageLoader.loadSubPage(page) ?: continue
         flatten(nodes).forEach { node ->
             val key = node.key
             if (key.isNotEmpty() && (configPath to key) in wanted) {

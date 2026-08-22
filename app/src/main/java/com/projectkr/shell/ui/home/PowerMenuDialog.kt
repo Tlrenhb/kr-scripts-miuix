@@ -80,9 +80,3 @@ fun PowerMenuDialog(
         }
     }
 }
-
-private fun startPower(node: RunnableNode) {
-    Thread {
-        ScriptActions.stream(node, node.setState.orEmpty())
-    }.start()
-}
