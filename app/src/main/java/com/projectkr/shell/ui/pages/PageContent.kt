@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import com.projectkr.krscript.core.model.ActionNode
 import com.projectkr.krscript.core.model.NodeInfoBase
 import com.projectkr.krscript.core.model.RunnableNode

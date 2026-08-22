@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.shell.navigation.Route
 import com.projectkr.shell.ui.fileselector.FileSelectorScreen
+import com.projectkr.shell.ui.home.HomeScreen
 import com.projectkr.shell.ui.monitor.MonitorScreen
 import com.projectkr.shell.ui.online.OnlinePageScreen
 import com.projectkr.shell.ui.pages.PageDetailScreen
@@ -137,6 +138,13 @@ private fun MainTabsScreen(
         },
     ) { innerPadding ->
         when (selectedTab) {
+            0 -> Box(Modifier.padding(innerPadding)) {
+                HomeScreen(
+                    rooted = com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
+                        com.projectkr.shell.runtime.KrScriptRuntime.rooted,
+                    onOpenFileSelector = { backStack.add(Route.FileSelector(startDir = "/")) },
+                )
+            }
             1 -> Box(Modifier.padding(innerPadding)) {
                 PagesScreen(backStack = backStack)
             }

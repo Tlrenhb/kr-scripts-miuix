@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.projectkr.krscript.core.config.PageConfigReader
 import com.projectkr.krscript.core.model.ActionParamInfo
+import com.projectkr.shell.ui.pages.FilePickerResult
 import top.yukonga.miuix.kmp.basic.ColorPicker
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton

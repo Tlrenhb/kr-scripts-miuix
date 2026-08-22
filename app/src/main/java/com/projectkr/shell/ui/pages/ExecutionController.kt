@@ -85,7 +85,6 @@ class ExecutionController(
                     params = params,
                 )
                 activeSession = session
-                onSessionStarted(session)
             }
         }
     }
@@ -98,9 +97,8 @@ class ExecutionController(
                 script = node.setState.orEmpty(),
                 params = params,
             )
-            // Drain output quietly; completion surfaces through the notification
-            // added in the monitor phase.
-            session.running.let { /* observed by Session state holders */ }
+            // Output drains quietly; completion surfaces through a notification
+            // added with the monitor phase.
         }
     }
 }

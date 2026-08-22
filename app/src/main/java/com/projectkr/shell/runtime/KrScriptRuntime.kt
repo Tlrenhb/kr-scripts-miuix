@@ -38,6 +38,9 @@ object KrScriptRuntime {
 
     val rooted: Boolean get() = shell.rooted
 
+    /** True once [init] has produced the script environment. */
+    val isReady: Boolean get() = this::scriptEnv.isInitialized
+
     /** Evaluator used by PageConfigReader while parsing configs. */
     val evaluator = ScriptEvaluator { script, node ->
         scriptEnv.executeResult(script, node)

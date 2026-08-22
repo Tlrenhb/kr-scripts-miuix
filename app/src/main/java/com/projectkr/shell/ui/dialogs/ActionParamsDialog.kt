@@ -169,7 +169,7 @@ private fun ParamField(
                 )
                 OverlayDropdownPreference(
                     title = title,
-                    summary = param.desc.ifEmpty { "已选 ${selectedSet.size} 项" },
+                    summary = param.desc?.ifEmpty { "已选 ${selectedSet.size} 项" },
                     entries = entries,
                     collapseOnSelection = false,
                 )
