@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kr-script>
+    <group title="子页面功能">
+        <switch title="子页面开关">
+            <get>echo 1</get>
+            <set>echo "sub switch: $state"</set>
+        </switch>
+        <action title="返回上级提示">
+            <script>echo "from subpage, PAGE_CONFIG_FILE=$PAGE_CONFIG_FILE"</script>
+        </action>
+    </group>
+</kr-script>

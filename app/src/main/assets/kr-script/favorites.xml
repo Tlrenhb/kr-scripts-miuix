@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kr-script>
+    <group title="收藏">
+        <text title="收藏夹是空的">
+            <summary>在「页面」中点击条目右侧的收藏按钮添加</summary>
+        </text>
+    </group>
+</kr-script>

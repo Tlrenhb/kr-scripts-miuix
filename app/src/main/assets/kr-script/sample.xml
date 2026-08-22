@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<kr-script>
+    <text title="KrScript Miuix">
+        <summary>Compose + Miuix 重写版 · 内置示例页面</summary>
+        <slice bold="true" size="16">支持全部六种节点</slice>
+        <slice color="#888888">page / action / switch / picker / text / group</slice>
+    </text>
+
+    <group title="基础控件" key="basic">
+        <switch title="示例开关" summary="get/set 脚本绑定">
+            <get>echo 0</get>
+            <set>echo "switch: $state"</set>
+        </switch>
+
+        <picker title="示例选择器" summary="单选下拉">
+            <option val="performance">性能模式</option>
+            <option val="balance">均衡模式</option>
+            <option val="powersave">省电模式</option>
+            <get>echo balance</get>
+            <set>echo "picker: $state"</set>
+        </picker>
+
+        <action title="简单动作" summary="直接执行脚本并显示日志">
+            <script>
+                echo "设备: $(getprop ro.product.model)"
+                echo "内核: $(uname -r)"
+            </script>
+        </action>
+
+        <action title="带确认的危险动作" confirm="true" warning="此动作仅作演示，不会修改系统。">
+            <script>echo confirmed</script>
+        </action>
+    </group>
+
+    <group title="参数表单演示" key="params">
+        <action title="完整参数类型" summary="七种参数类型的参数弹窗">
+            <param name="msg" type="text" title="文本" value="hello" />
+            <param name="mode" type="select" title="单选">
+                <option val="fast">快速</option>
+                <option val="safe">安全</option>
+            </param>
+            <param name="tags" type="multiple" title="多选" separator=",">
+                <option val="a">A</option>
+                <option val="b">B</option>
+                <option val="c">C</option>
+            </param>
+            <param name="enable" type="switch" title="开关" value="1" />
+            <param name="level" type="seekbar" title="滑块" min="0" max="100" value="50" />
+            <param name="color" type="color" title="颜色" value="#FF5722" />
+            <param name="file" type="file" title="文件选择" editable="true" />
+            <script>echo "msg=$msg mode=$mode tags=$tags enable=$enable level=$level color=$color file=$file"</script>
+        </action>
+    </group>
+
+    <group title="页面导航" key="nav">
+        <page title="子页面" summary="进入二级页面的动作列表">
+            <config>file:///android_asset/kr-script/subpage.xml</config>
+        </page>
+
+        <page title="在线文档" summary="浏览器打开 KrScript 文档">
+            <link>https://github.com/Tlrenhb/kr-scripts-miuix</link>
+        </page>
+    </group>
+
+    <text title="说明">
+        <slice break="true">所有节点均由 assets/kr-script.conf 指定的 XML 配置驱动。</slice>
+        <slice sh="echo 动态文本：$(getprop ro.build.version.release)">动态行：</slice>
+    </text>
+</kr-script>
