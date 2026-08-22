@@ -24,6 +24,10 @@ class KeepShellRunner(private val rootMode: Boolean = true) : ShellRunner {
     private var idle = true
     val isIdle: Boolean get() = idle
 
+    /** Whether this runner actually holds root (set by [createWithFallback]). */
+    var rooted: Boolean = false
+        private set
+
     private val lock = ReentrantLock()
 
     private val startTag = "|SH>>|"
@@ -126,7 +130,10 @@ class KeepShellRunner(private val rootMode: Boolean = true) : ShellRunner {
          */
         fun createWithFallback(): KeepShellRunner {
             val root = KeepShellRunner(rootMode = true)
-            if (root.checkRoot()) return root
+            if (root.checkRoot()) {
+                root.rooted = true
+                return root
+            }
             root.tryExit()
             return KeepShellRunner(rootMode = false)
         }
