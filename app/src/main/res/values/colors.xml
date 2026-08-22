@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2026, kr-scripts-miuix contributors -->
+<!-- SPDX-License-Identifier: GPL-3.0 -->
+<resources>
+    <color name="window_background">#FFF7F7F7</color>
+</resources>

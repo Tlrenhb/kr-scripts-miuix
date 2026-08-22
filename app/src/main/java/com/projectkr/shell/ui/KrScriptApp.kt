@@ -3,8 +3,9 @@
 
 package com.projectkr.shell.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +29,6 @@ import com.projectkr.shell.ui.theme.rememberThemeController
 import com.projectkr.shell.ui.theme.saveColorMode
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Home
@@ -120,7 +120,7 @@ fun KrScriptApp() {
 
 /**
  * Four-tab shell (首页 / 页面 / 收藏 / 关于). Tab selection is local UI state;
- * screens render inside one shared Scaffold so Overlay popups have a host.
+ * each tab screen hosts its own Scaffold (and thus its own Overlay host).
  */
 @Composable
 private fun MainTabsScreen(
@@ -136,38 +136,32 @@ private fun MainTabsScreen(
     )
     var selectedTab by remember { mutableStateOf(0) }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                tabs.forEachIndexed { index, tab ->
-                    NavigationBarItem(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        icon = tab.icon,
-                        label = tab.label,
-                    )
-                }
-            }
-        },
-    ) { innerPadding ->
-        when (selectedTab) {
-            0 -> Box(Modifier.padding(innerPadding)) {
-                HomeScreen(
+    // No outer Scaffold here: each tab screen hosts its own Scaffold whose
+    // TopAppBar consumes the status-bar inset exactly once (an outer Scaffold
+    // without a topBar would add it again, leaving an empty gap).
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f)) {
+            when (selectedTab) {
+                0 -> HomeScreen(
                     rooted = com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
                         com.projectkr.shell.runtime.KrScriptRuntime.rooted,
                     onOpenFileSelector = { backStack.add(Route.FileSelector(startDir = "/")) },
                 )
-            }
-            1 -> Box(Modifier.padding(innerPadding)) {
-                PagesScreen(backStack = backStack)
-            }
-            2 -> Box(Modifier.padding(innerPadding)) {
-                FavoritesScreen(backStack = backStack)
-            }
-            else -> Box(Modifier.padding(innerPadding)) {
-                AboutScreen(
+                1 -> PagesScreen(backStack = backStack)
+                2 -> FavoritesScreen(backStack = backStack)
+                else -> AboutScreen(
                     colorMode = colorMode,
                     onColorModeChange = onColorModeChange,
+                )
+            }
+        }
+        NavigationBar {
+            tabs.forEachIndexed { index, tab ->
+                NavigationBarItem(
+                    selected = selectedTab == index,
+                    onClick = { selectedTab = index },
+                    icon = tab.icon,
+                    label = tab.label,
                 )
             }
         }
