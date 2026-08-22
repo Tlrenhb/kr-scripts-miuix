@@ -3,16 +3,21 @@
 
 package com.projectkr.shell.ui.dialogs
 
+import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.projectkr.krscript.core.model.ActionNode
@@ -37,11 +42,40 @@ import top.yukonga.miuix.kmp.preference.SliderPreference
 fun ActionParamsDialog(
     node: ActionNode,
     show: Boolean,
-    onPickFile: () -> Unit,
     onSubmit: (Map<String, String>) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    return ActionParamsDialogContent(node, show, onSubmit, onDismiss)
+}
+
+@Composable
+private fun ActionParamsDialogContent(
+    node: ActionNode,
+    show: Boolean,
+    onSubmit: (Map<String, String>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
     var draft by remember(node.index) { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    // SAF picker: overlays the dialog without navigating away, so the form
+    // draft survives. The picked document is copied into cache and the real
+    // path is what scripts receive.
+    var pendingFileParam by remember { mutableStateOf<String?>(null) }
+    // Color picker runs as a sibling OverlayDialog (dialogs must not nest).
+    var colorPickParam by remember(node.index) { mutableStateOf<String?>(null) }
+    val filePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val name = pendingFileParam
+        pendingFileParam = null
+        if (uri != null && name != null) {
+            val path = copyUriToCache(context, uri, name)
+            if (path != null) {
+                draft = draft + (name to path)
+            }
+        }
+    }
     var selectOptions by remember(node.index) {
         mutableStateOf<Map<String, List<SelectItem>>>(emptyMap())
     }
@@ -73,7 +107,7 @@ fun ActionParamsDialog(
 
     OverlayDialog(
         title = node.title,
-        summary = node.desc.ifEmpty { null },
+        summary = node.desc?.ifEmpty { null },
         show = show && ready,
         onDismissRequest = onDismiss,
     ) {
@@ -82,7 +116,10 @@ fun ActionParamsDialog(
                 param = param,
                 value = draft[param.name.orEmpty()].orEmpty(),
                 options = param.options ?: selectOptions[param.name.orEmpty()] ?: emptyList(),
-                onPickFile = onPickFile,
+                onPickClick = {
+                    pendingFileParam = param.name.orEmpty()
+                    filePicker.launch(arrayOf("*/*"))
+                },
                 onValueChange = { newValue ->
                     draft = draft + ((param.name.orEmpty()) to newValue)
                 },
@@ -100,6 +137,17 @@ fun ActionParamsDialog(
                 .padding(top = 12.dp),
         )
     }
+
+    // Sibling popup: opening the picker keeps the params form composed below.
+    ColorPickerDialog(
+        show = colorPickParam != null,
+        initialHex = draft[colorPickParam].orEmpty(),
+        onPicked = { hex ->
+            colorPickParam?.let { name -> draft = draft + (name to hex) }
+            colorPickParam = null
+        },
+        onDismiss = { colorPickParam = null },
+    )
 }
 
 @Composable
@@ -107,7 +155,7 @@ private fun ParamField(
     param: ActionParamInfo,
     value: String,
     options: List<SelectItem>,
-    onPickFile: () -> Unit,
+    onPickClick: () -> Unit,
     onValueChange: (String) -> Unit,
 ) {
     val title = param.title ?: param.label ?: param.name.orEmpty()
@@ -121,13 +169,22 @@ private fun ParamField(
             )
         }
         "seekbar" -> {
-            val current = value.toFloatOrNull() ?: param.min.toFloat()
+            // Keep full precision while dragging; quantize the draft only when
+            // the gesture finishes (doc: value mirrors onValueChange).
+            var sliderValue by remember(param.name) {
+                mutableFloatStateOf(value.toFloatOrNull() ?: param.min.toFloat())
+            }
+            LaunchedEffect(value) {
+                value.toFloatOrNull()?.let { if (it != sliderValue) sliderValue = it }
+            }
             SliderPreference(
                 title = title,
                 summary = param.desc,
-                value = current,
+                value = sliderValue,
                 valueRange = param.min.toFloat()..param.max.toFloat(),
-                onValueChange = { v -> onValueChange(v.toInt().toString()) },
+                onValueChange = { sliderValue = it },
+                onValueChangeFinished = { onValueChange(sliderValue.toInt().toString()) },
+                valueText = sliderValue.toInt().toString(),
             )
         }
         "select", "multiple" -> {
@@ -176,10 +233,14 @@ private fun ParamField(
             }
         }
         "color" -> {
-            ColorParamRow(title = title, value = value, onValueChange = onValueChange)
+            ColorParamRow(
+                title = title,
+                value = value,
+                onRequestPick = { colorPickParam = param.name.orEmpty() },
+            )
         }
         "file" -> {
-            FileParamRow(param = param, value = value, onPickClick = onPickFile, onValueChange = onValueChange)
+            FileParamRow(param = param, value = value, onPickClick = onPickClick, onValueChange = onValueChange)
         }
         else -> {
             // text and unknown types fall back to a plain text field.
@@ -192,3 +253,16 @@ private fun ParamField(
         }
     }
 }
+
+/** Copies a picked document into the app cache so shell scripts can read it. */
+internal fun copyUriToCache(context: Context, uri: android.net.Uri, paramName: String): String? =
+    runCatching {
+        val resolver = context.contentResolver
+        val fileName = "$paramName-${System.currentTimeMillis()}"
+        val out = java.io.File(context.cacheDir, "picked/$fileName")
+        out.parentFile?.mkdirs()
+        resolver.openInputStream(uri)?.use { input ->
+            out.outputStream().use { output -> input.copyTo(output) }
+        } ?: return null
+        out.absolutePath
+    }.getOrNull()

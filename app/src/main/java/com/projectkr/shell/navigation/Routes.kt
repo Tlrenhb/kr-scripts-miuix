@@ -8,13 +8,12 @@ import top.yukonga.miuix.kmp.nav.core.NavKey
 
 /**
  * App routes. [MainTabs] hosts the four-tab shell; everything else pushes on top.
+ *
+ * NavDisplay matches entries by exact runtime class: every concrete route that
+ * can appear on the stack MUST have a registered [entry][com.projectkr.shell.ui.KrScriptApp].
  */
 @Serializable
 sealed interface Route : NavKey {
-
-    /** Splash entry shown briefly at launch. */
-    @Serializable
-    data object Splash : Route
 
     /** Home / Pages / Favorites / About tab shell. */
     @Serializable

@@ -7,8 +7,10 @@ import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,6 +45,7 @@ fun FavoritesScreen(
 ) {
     val context = LocalContext.current
     var reloadKey by rememberSaveable { mutableIntStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
     val store = remember { FavoritesStore(context) }
 
 val content = rememberPageContent(reloadKey) {
@@ -91,8 +94,12 @@ val content = rememberPageContent(reloadKey) {
         },
     ) { inner ->
         PullToRefresh(
-            isRefreshing = content.loading,
-            onRefresh = { reloadKey++ },
+            // Doc contract: set isRefreshing true synchronously in onRefresh.
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                reloadKey++
+            },
             modifier = Modifier.padding(inner),
         ) {
             NodeScreenBody(

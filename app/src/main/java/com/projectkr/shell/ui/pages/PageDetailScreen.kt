@@ -48,12 +48,16 @@ fun PageDetailScreen(
 ) {
     val context = LocalContext.current
     var reloadKey by rememberSaveable { mutableIntStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
     val page = remember(nodeKey) {
         PageRegistry.get(nodeKey) ?: PageNode(configPath).apply { this.title = title }
     }
 
     val content = rememberPageContent(reloadKey) {
         PageLoader.loadSubPage(page)
+    }
+    LaunchedEffect(content.loading) {
+        if (!content.loading) refreshing = false
     }
     val controller = remember(content.scope) {
         ExecutionController(
@@ -83,7 +87,7 @@ fun PageDetailScreen(
         when (option.type) {
             "refresh" -> reloadKey++
             "finish" -> backStack.removeLastOrNull()
-            "file" -> backStack.add(Route.FileSelector(startDir = "/"))
+            "file" -> pushIfAbsent(backStack, Route.FileSelector(startDir = "/"))
             else -> controller.onRunnable(option, emptyMap())
         }
     }
@@ -118,14 +122,18 @@ fun PageDetailScreen(
         },
     ) { inner ->
         PullToRefresh(
-            isRefreshing = content.loading,
-            onRefresh = { reloadKey++ },
+            // Doc contract: set isRefreshing true synchronously in onRefresh.
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                reloadKey++
+            },
             modifier = Modifier.padding(inner),
         ) {
             NodeScreenBody(
                 controller = controller,
                 nodes = content.nodes ?: emptyList(),
-                onPickFile = { backStack.add(Route.FileSelector(startDir = "/")) },
+                onPickFile = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
                 modifier = Modifier.fillMaxSize(),
             )
         }

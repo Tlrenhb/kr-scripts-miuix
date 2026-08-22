@@ -30,15 +30,16 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
-/** Hex color parameter: swatch preview + picker dialog. */
+/**
+ * Hex color parameter: swatch preview + pick entry. The picker itself is a
+ * sibling OverlayDialog owned by the params screen (dialogs must not nest).
+ */
 @Composable
 fun ColorParamRow(
     title: String,
     value: String,
-    onValueChange: (String) -> Unit,
+    onRequestPick: () -> Unit,
 ) {
-    var picking by remember { mutableStateOf(false) }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -57,20 +58,7 @@ fun ColorParamRow(
             )
         }
     }
-    TextButton(text = "选择颜色", onClick = { picking = true })
-
-    if (picking) {
-        OverlayDialog(
-            title = title,
-            show = true,
-            onDismissRequest = { picking = false },
-        ) {
-            ColorPickerContent(initialHex = value, onPicked = {
-                onValueChange(it)
-                picking = false
-            })
-        }
-    }
+    TextButton(text = "选择颜色", onClick = onRequestPick)
 }
 
 /** File path parameter: editable text (when allowed) + picker entry button. */
@@ -102,10 +90,32 @@ fun FileParamRow(
     }
 }
 
+private fun parseColorSafe(hex: String): Color =
+    try {
+        Color(PageConfigReader.parseColor(hex.ifEmpty { "#FFFFFFFF" }))
+    } catch (_: Exception) {
+        Color.Transparent
+    }
+
+/**
+ * Sibling color picker dialog (never nested inside another OverlayDialog).
+ */
 @Composable
-private fun ColorPickerContent(initialHex: String, onPicked: (String) -> Unit) {
-    var color by remember { mutableStateOf(parseColorSafe(initialHex)) }
-    Column {
+fun ColorPickerDialog(
+    show: Boolean,
+    initialHex: String,
+    onPicked: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var color by androidx.compose.runtime.remember { mutableStateOf(parseColorSafe(initialHex)) }
+    LaunchedEffect(show) {
+        if (show) color = parseColorSafe(initialHex)
+    }
+    top.yukonga.miuix.kmp.overlay.OverlayDialog(
+        title = "选择颜色",
+        show = show,
+        onDismissRequest = onDismiss,
+    ) {
         ColorPicker(
             color = color,
             onColorChanged = { color = it },
@@ -115,6 +125,7 @@ private fun ColorPickerContent(initialHex: String, onPicked: (String) -> Unit) {
             onClick = {
                 val hex = String.format("#%08X", color.value.toInt())
                 onPicked(hex)
+                onDismiss()
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -122,10 +133,3 @@ private fun ColorPickerContent(initialHex: String, onPicked: (String) -> Unit) {
         )
     }
 }
-
-private fun parseColorSafe(hex: String): Color =
-    try {
-        Color(PageConfigReader.parseColor(hex.ifEmpty { "#FFFFFFFF" }))
-    } catch (_: Exception) {
-        Color.Transparent
-    }

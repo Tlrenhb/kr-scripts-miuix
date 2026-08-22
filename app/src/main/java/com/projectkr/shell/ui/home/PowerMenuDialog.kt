@@ -54,11 +54,14 @@ fun PowerMenuDialog(
         }
     }
 
-    confirmAction?.let { action ->
+    // Retain the action while the hide animation plays; `show` tracks state.
+    var lastAction by remember { mutableStateOf<PowerAction?>(null) }
+    confirmAction?.let { lastAction = it }
+    lastAction?.let { action ->
         OverlayDialog(
             title = action.label,
             summary = "确定执行「${action.label}」吗？",
-            show = true,
+            show = confirmAction != null,
             onDismissRequest = { confirmAction = null },
         ) {
             androidx.compose.foundation.layout.Row {

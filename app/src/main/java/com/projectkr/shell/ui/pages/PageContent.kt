@@ -56,7 +56,6 @@ fun NodeScreenBody(
     controller: ExecutionController,
     nodes: List<NodeInfoBase>?,
     modifier: Modifier = Modifier,
-    onPickFile: () -> Unit = {},
 ) {
     NodeListContent(
         nodes = nodes ?: emptyList(),
@@ -64,30 +63,35 @@ fun NodeScreenBody(
         modifier = modifier,
     )
 
-    controller.confirmRequest?.let { node ->
+    // Doc lifecycle: keep dialogs composed and bind `show` to state so the
+    // hide animation runs; retain the last payload while the animation plays.
+    var lastConfirm by remember { mutableStateOf<RunnableNode?>(null) }
+    controller.confirmRequest?.let { lastConfirm = it }
+    lastConfirm?.let { node ->
         ConfirmDialog(
             node = node,
-            show = true,
+            show = controller.confirmRequest != null,
             onConfirm = { controller.submitConfirmation() },
             onDismiss = { controller.dismissConfirmation() },
         )
     }
 
-    controller.paramsAction?.let { action ->
+    var lastParams by remember { mutableStateOf<ActionNode?>(null) }
+    controller.paramsAction?.let { lastParams = it }
+    lastParams?.let { action ->
         ActionParamsDialog(
             node = action,
-            show = true,
-            onPickFile = onPickFile,
+            show = controller.paramsAction != null,
             onSubmit = { values -> controller.submitParams(action, values) },
             onDismiss = { controller.dismissParams() },
         )
     }
 
-    controller.activeSession?.let { session ->
-        LogDialog(
-            session = session,
-            show = true,
-            onClose = { controller.closeSession() },
-        )
-    }
+    var lastSession by remember { mutableStateOf<com.projectkr.shell.runtime.ScriptActions.Session?>(null) }
+    controller.activeSession?.let { lastSession = it }
+    LogDialog(
+        session = lastSession,
+        show = controller.activeSession != null,
+        onClose = { controller.closeSession() },
+    )
 }

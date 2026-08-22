@@ -5,11 +5,14 @@ package com.projectkr.shell.ui.pages
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,6 +37,8 @@ import com.projectkr.shell.runtime.ScriptActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -83,38 +88,27 @@ fun NodeListContent(
     callbacks: NodeListCallbacks,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    // Must be a scrollable container: PullToRefresh and TopAppBar collapse are
+    // both driven by nested-scroll deltas dispatched from this list.
+    LazyColumn(modifier = modifier.fillMaxWidth()) {
         nodes.forEach { node ->
             when (node) {
-                is GroupNode -> GroupSection(node, callbacks)
-                is TextNode -> TextCard(node)
-                is PageNode -> Card(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    PageRow(node, callbacks)
+                is GroupNode -> item(key = node.index) {
+                    GroupSection(node, callbacks)
+                    if (node.children.isEmpty()) Spacer(Modifier.height(12.dp))
                 }
-                is ActionNode -> Card(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    ArrowAction(node, callbacks)
+                is TextNode -> item(key = node.index) { TextCard(node) }
+                is PageNode -> item(key = node.index) {
+                    NodeCard { PageRow(node, callbacks) }
                 }
-                is SwitchNode -> Card(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    SwitchRow(node, callbacks)
+                is ActionNode -> item(key = node.index) {
+                    NodeCard { ArrowAction(node, callbacks) }
                 }
-                is PickerNode -> Card(
-                    modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(bottom = 12.dp),
-                ) {
-                    PickerRow(node, callbacks)
+                is SwitchNode -> item(key = node.index) {
+                    NodeCard { SwitchRow(node, callbacks) }
+                }
+                is PickerNode -> item(key = node.index) {
+                    NodeCard { PickerRow(node, callbacks) }
                 }
             }
         }
@@ -122,22 +116,13 @@ fun NodeListContent(
 }
 
 @Composable
-private fun GroupSection(group: GroupNode, callbacks: NodeListCallbacks) {
-    if (!group.supported) return
-    SmallTitle(text = group.title)
+private fun NodeCard(content: @Composable () -> Unit) {
     Card(
         modifier = Modifier
             .padding(horizontal = 12.dp)
             .padding(bottom = 12.dp),
     ) {
-        group.children.forEach { child ->
-            when (child) {
-                is SwitchNode -> SwitchRow(child, callbacks)
-                is PickerNode -> PickerRow(child, callbacks)
-                is ActionNode -> ArrowAction(child, callbacks)
-                is PageNode -> PageRow(child, callbacks)
-            }
-        }
+        content()
     }
 }
 
@@ -150,6 +135,7 @@ private fun SwitchRow(node: SwitchNode, callbacks: NodeListCallbacks) {
         checked = checked,
         onCheckedChange = { value ->
             checked = value
+            node.checked = value // keep model and UI in one direction
             callbacks.onRunnable(node, mapOf("state" to if (value) "1" else "0"))
         },
         endActions = { FavoriteStar(node, callbacks) },
@@ -182,7 +168,10 @@ private fun PickerRow(node: PickerNode, callbacks: NodeListCallbacks) {
         }
     }
     val titles = options.map { it.title.orEmpty() }
-    val selectedIndex = options.indexOfFirst { it.value == node.value }
+    // Selection is snapshot state (doc pattern); the model field mirrors it.
+    var selectedIndex by remember(options) {
+        mutableIntStateOf(options.indexOfFirst { it.value == node.value })
+    }
 
     OverlayDropdownPreference(
         title = node.title,
@@ -190,6 +179,7 @@ private fun PickerRow(node: PickerNode, callbacks: NodeListCallbacks) {
         items = titles,
         selectedIndex = selectedIndex,
         onSelectedIndexChange = { index ->
+            selectedIndex = index
             if (index in options.indices) {
                 node.value = options[index].value
                 callbacks.onRunnable(node, mapOf("state" to options[index].value.orEmpty()))

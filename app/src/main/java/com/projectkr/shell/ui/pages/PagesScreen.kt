@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,10 +44,14 @@ fun PagesScreen(
 ) {
     val context = LocalContext.current
     var reloadKey by rememberSaveable { mutableIntStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
     var searching by rememberSaveable { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var searchExpanded by remember { mutableStateOf(false) }
     val content = rememberPageContent(reloadKey) { PageLoader.loadTopPage() }
+    LaunchedEffect(content.loading) {
+        if (!content.loading) refreshing = false
+    }
 
     val controller = remember(content.scope) {
         ExecutionController(
@@ -93,8 +98,12 @@ fun PagesScreen(
                 }
             }
             PullToRefresh(
-                isRefreshing = content.loading,
-                onRefresh = { reloadKey++ },
+                isRefreshing = refreshing,
+                onRefresh = {
+                    refreshing = true
+                    reloadKey++
+                },
+                topAppBarScrollBehavior = scrollBehavior,
             ) {
                 NodeScreenBody(
                     controller = controller,

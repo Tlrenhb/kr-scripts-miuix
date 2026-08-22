@@ -3,14 +3,17 @@
 
 package com.projectkr.shell.ui
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.projectkr.shell.ShortcutLaunch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -23,11 +26,13 @@ import com.projectkr.shell.ui.online.OnlinePageScreen
 import com.projectkr.shell.ui.pages.PageDetailScreen
 import com.projectkr.shell.ui.pages.FavoritesScreen
 import com.projectkr.shell.ui.pages.PagesScreen
+import com.projectkr.shell.ui.pages.pushIfAbsent
 import com.projectkr.shell.ui.theme.KrColorMode
 import com.projectkr.shell.ui.theme.loadColorMode
 import com.projectkr.shell.ui.theme.rememberThemeController
 import com.projectkr.shell.ui.theme.saveColorMode
 import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Favorites
@@ -49,28 +54,26 @@ private data class TabItem(
  * Tab selection lives in [MainTabsScreen] — never derived from nav entries.
  */
 @Composable
-fun KrScriptApp() {
+fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
     val context = LocalContext.current
     var colorMode by remember { mutableStateOf(loadColorMode(context)) }
     val controller = rememberThemeController(colorMode)
 
     MiuixTheme(controller = controller) {
-        // Launcher shortcuts deep-link straight into a page detail.
-        val initialRoutes = remember {
-            val cfg = (context as? android.app.Activity)?.intent?.getStringExtra(
-                com.projectkr.shell.shortcut.ShortcutHelper.EXTRA_CONFIG
-            ).orEmpty()
-            val shortcutTitle = (context as? android.app.Activity)?.intent?.getStringExtra(
-                com.projectkr.shell.shortcut.ShortcutHelper.EXTRA_TITLE
-            ).orEmpty()
-            if (cfg.isNotEmpty()) {
-                listOf<Route>(Route.MainTabs, Route.PageDetail(cfg, shortcutTitle, ""))
-            } else {
-                listOf<Route>(Route.MainTabs)
+        val backStack = rememberNavBackStack<Route>(Route.MainTabs)
+        val onBack: () -> Unit = { backStack.removeLastOrNull() }
+
+        // Shortcut deep links (cold and warm start) push the target page once.
+        LaunchedEffect(shortcut) {
+            shortcut?.let { launch ->
+                val route = Route.PageDetail(
+                    configPath = launch.configPath,
+                    title = launch.title,
+                    nodeKey = "",
+                )
+                if (backStack.none { it == route }) backStack.add(route)
             }
         }
-        val backStack = rememberNavBackStack<Route>(*initialRoutes.toTypedArray())
-        val onBack: () -> Unit = { backStack.removeLastOrNull() }
 
         NavDisplay(
             backStack = backStack,
@@ -136,32 +139,39 @@ private fun MainTabsScreen(
     )
     var selectedTab by remember { mutableStateOf(0) }
 
-    // No outer Scaffold here: each tab screen hosts its own Scaffold whose
-    // TopAppBar consumes the status-bar inset exactly once (an outer Scaffold
-    // without a topBar would add it again, leaving an empty gap).
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f)) {
+    // Outer Scaffold owns the NavigationBar; consumeWindowInsets makes the
+    // inner per-tab Scaffolds see the already-applied insets exactly once
+    // (per the Scaffold KDoc: padding + consumeWindowInsets).
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                tabs.forEachIndexed { index, tab ->
+                    NavigationBarItem(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        icon = tab.icon,
+                        label = tab.label,
+                    )
+                }
+            }
+        },
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding),
+        ) {
             when (selectedTab) {
                 0 -> HomeScreen(
                     rooted = com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
                         com.projectkr.shell.runtime.KrScriptRuntime.rooted,
-                    onOpenFileSelector = { backStack.add(Route.FileSelector(startDir = "/")) },
+                    onOpenFileSelector = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
                 )
                 1 -> PagesScreen(backStack = backStack)
                 2 -> FavoritesScreen(backStack = backStack)
                 else -> AboutScreen(
                     colorMode = colorMode,
                     onColorModeChange = onColorModeChange,
-                )
-            }
-        }
-        NavigationBar {
-            tabs.forEachIndexed { index, tab ->
-                NavigationBarItem(
-                    selected = selectedTab == index,
-                    onClick = { selectedTab = index },
-                    icon = tab.icon,
-                    label = tab.label,
                 )
             }
         }

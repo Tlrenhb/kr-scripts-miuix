@@ -30,17 +30,22 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
  */
 @Composable
 fun LogDialog(
-    session: ScriptActions.Session,
+    session: ScriptActions.Session?,
     show: Boolean,
     onClose: () -> Unit,
 ) {
+    // Retain the last session while the hide animation plays.
+    var last by remember { mutableStateOf<ScriptActions.Session?>(null) }
+    if (session != null) last = session
+    val active = last ?: return
+
     OverlayDialog(
-        title = session.node.title,
+        title = active.node.title,
         show = show,
-        onDismissRequest = { if (!session.running) onClose() },
+        onDismissRequest = { if (!active.running) onClose() },
     ) {
         val scroll = rememberScrollState()
-        LaunchedEffect(session.lines.size) {
+        LaunchedEffect(active.lines.size) {
             scroll.scrollTo(scroll.maxValue)
         }
 
@@ -51,7 +56,7 @@ fun LogDialog(
                 .verticalScroll(scroll),
         ) {
             Text(
-                text = session.lines.joinToString("\n") { it.text },
+                text = active.lines.joinToString("\n") { it.text },
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
                 color = MiuixTheme.colorScheme.onBackground,
@@ -60,16 +65,16 @@ fun LogDialog(
         }
 
         Row(modifier = Modifier.padding(top = 12.dp)) {
-            if (session.running && session.node.interruptable) {
+            if (active.running && active.node.interruptable) {
                 TextButton(
                     text = "停止",
-                    onClick = { session.interrupt() },
+                    onClick = { active.interrupt() },
                     modifier = Modifier.weight(1f),
                 )
             }
-            if (!session.running) {
+            if (!active.running) {
                 TextButton(
-                    text = "关闭" + exitSuffix(session),
+                    text = "关闭" + exitSuffix(active),
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
                 )

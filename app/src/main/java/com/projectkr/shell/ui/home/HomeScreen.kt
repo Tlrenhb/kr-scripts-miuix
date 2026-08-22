@@ -237,15 +237,29 @@ fun HomeScreen(
             }
         }
 
-        // Overlay dialogs must stay inside the Scaffold popup host.
-        session?.let { active ->
-            LogDialog(session = active, show = true, onClose = { session = null })
-            LaunchedEffect(active) {
-                while (active.running) delay(300)
-                delay(1200)
-                session = null
+        // Overlay dialogs must stay inside the Scaffold popup host, composed
+        // with `show` bound to state so the hide animation runs.
+        var logVisible by remember { mutableStateOf(false) }
+        LaunchedEffect(session) {
+            if (session != null) {
+                logVisible = true
             }
         }
+        LaunchedEffect(session?.running, session?.exitCode) {
+            val done = session != null && !session!!.running
+            if (done && session?.node?.autoOff == true) {
+                delay(600)
+                logVisible = false
+            }
+        }
+        LogDialog(
+            session = session,
+            show = logVisible,
+            onClose = {
+                logVisible = false
+                session = null
+            },
+        )
 
         PowerMenuDialog(
             show = powerMenu,

@@ -13,6 +13,10 @@ import top.yukonga.miuix.kmp.nav.core.NavKey
 /**
  * Opens a page node following the original priority: link → browser,
  * activity → component intent, html → online page, otherwise sub config.
+ *
+ * Duplicate pushes are rejected by miuix-nav ("Duplicate contentKey"), so the
+ * guard below is mandatory — double taps and self-referential pages would
+ * otherwise crash.
  */
 fun openPageNode(context: Context, node: PageNode, backStack: MutableList<NavKey>) {
     when {
@@ -20,11 +24,12 @@ fun openPageNode(context: Context, node: PageNode, backStack: MutableList<NavKey
         node.activity.isNotEmpty() -> openActivity(context, node.activity)
         node.onlineHtmlPage.isNotEmpty() -> {
             PageRegistry.put(node)
-            backStack.add(Route.OnlinePage(url = node.onlineHtmlPage, title = node.title))
+            pushIfAbsent(backStack, Route.OnlinePage(url = node.onlineHtmlPage, title = node.title))
         }
         else -> {
             PageRegistry.put(node)
-            backStack.add(
+            pushIfAbsent(
+                backStack,
                 Route.PageDetail(
                     configPath = node.pageConfigPath,
                     title = node.title,
@@ -32,6 +37,13 @@ fun openPageNode(context: Context, node: PageNode, backStack: MutableList<NavKey
                 ),
             )
         }
+    }
+}
+
+/** Pushes only when the identical route is not already on the stack. */
+fun pushIfAbsent(backStack: MutableList<NavKey>, route: NavKey) {
+    if (backStack.none { it == route }) {
+        backStack.add(route)
     }
 }
 
