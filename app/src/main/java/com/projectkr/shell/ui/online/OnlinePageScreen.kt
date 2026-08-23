@@ -5,6 +5,7 @@ package com.projectkr.shell.ui.online
 
 import android.annotation.SuppressLint
 import android.app.DownloadManager
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -44,6 +45,7 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import java.io.File
 
 /**
  * Online html page rendered in a WebView with the complete `KrScriptCore` JS
