@@ -35,6 +35,7 @@ import com.projectkr.krscript.core.model.SelectItem
 import com.projectkr.krscript.core.model.SwitchNode
 import com.projectkr.krscript.core.model.TextNode
 import com.projectkr.shell.runtime.ScriptActions
+import androidx.compose.foundation.Image
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.layout.size
@@ -154,6 +155,7 @@ private fun SwitchRow(node: SwitchNode, callbacks: NodeListCallbacks) {
         title = node.title,
         summary = node.summary.ifEmpty { node.desc },
         checked = checked,
+        startAction = { NodeIcon(node) },
         onCheckedChange = { value ->
             checked = value
             node.checked = value // keep model and UI in one direction
@@ -161,6 +163,49 @@ private fun SwitchRow(node: SwitchNode, callbacks: NodeListCallbacks) {
         },
         endActions = { FavoriteStar(node, callbacks) },
     )
+}
+
+/**
+ * Renders the XML `icon`/`icon-path` attribute: resolved against the page dir
+ * (assets / disk / root fallback) and decoded off the main thread.
+ */
+@Composable
+private fun NodeIcon(node: NodeInfoBase) {
+    val iconPath = when (node) {
+        is com.projectkr.krscript.core.model.ClickableNode -> node.iconPath.trim()
+        else -> ""
+    }
+    if (iconPath.isEmpty()) return
+
+    var bitmap by remember(iconPath, node.currentPageConfigPath) {
+        mutableStateOf<android.graphics.Bitmap?>(null)
+    }
+    LaunchedEffect(iconPath, node.currentPageConfigPath) {
+        bitmap = withContext(Dispatchers.IO) {
+            runCatching {
+                val runtime = com.projectkr.shell.runtime.KrScriptRuntime
+                if (!runtime.isReady) return@runCatching null
+                val extractor = com.projectkr.krscript.core.runtime.DefaultAssetExtractor(runtime.assetSource, runtime.fileStore)
+                val locator = PathAnalysis(
+                    assets = runtime.assetSource,
+                    files = runtime.fileStore,
+                    shell = runtime.shell,
+                    extractor = extractor,
+                    parentDir = node.pageConfigDir,
+                )
+                locator.parsePath(iconPath)?.stream?.use { stream ->
+                    android.graphics.BitmapFactory.decodeStream(stream)?.asImageBitmap()
+                }
+            }.getOrNull()
+        }
+    }
+    bitmap?.let { bmp ->
+        androidx.compose.foundation.Image(
+            bitmap = bmp,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+        )
+    }
 }
 
 /** Star toggle with a pop bounce when favorited. */
@@ -231,6 +276,7 @@ private fun ArrowAction(node: ActionNode, callbacks: NodeListCallbacks) {
     ArrowPreference(
         title = node.title,
         summary = node.summary.ifEmpty { node.desc },
+        startAction = { NodeIcon(node) },
         onClick = { callbacks.onRunnable(node, emptyMap()) },
         endActions = { FavoriteStar(node, callbacks) },
     )
@@ -241,6 +287,7 @@ private fun PageRow(node: PageNode, callbacks: NodeListCallbacks) {
     ArrowPreference(
         title = node.title,
         summary = node.summary.ifEmpty { node.desc },
+        startAction = { NodeIcon(node) },
         onClick = { callbacks.onPage(node) },
         endActions = { FavoriteStar(node, callbacks) },
     )

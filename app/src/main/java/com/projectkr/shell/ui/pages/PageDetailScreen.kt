@@ -135,7 +135,9 @@ fun PageDetailScreen(
         ) {
             NodeScreenBody(
                 controller = controller,
-                nodes = content.nodes ?: emptyList(),
+                nodes = content.nodes,
+                loading = content.loading,
+                onRetry = { reloadKey++ },
                 modifier = Modifier
                     .fillMaxSize()
                     .scrollEndHaptic()

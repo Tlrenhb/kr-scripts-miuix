@@ -72,12 +72,16 @@ fun PagesScreen(
                 title = "页面",
                 scrollBehavior = scrollBehavior,
                 actions = {
-                    IconButton(onClick = { searching = !searching }) {
-                        Icon(MiuixIcons.Search, contentDescription = "搜索")
-                    }
-                    IconButton(onClick = { reloadKey++ }) {
-                        Icon(MiuixIcons.Refresh, contentDescription = "刷新")
-                    }
+                    com.projectkr.shell.ui.common.HintedAction(
+                        text = "搜索",
+                        icon = MiuixIcons.Search,
+                        onClick = { searching = !searching },
+                    )
+                    com.projectkr.shell.ui.common.HintedAction(
+                        text = "重新加载",
+                        icon = MiuixIcons.Refresh,
+                        onClick = { reloadKey++ },
+                    )
                 },
             )
         },
@@ -111,6 +115,8 @@ fun PagesScreen(
                 NodeScreenBody(
                     controller = controller,
                     nodes = filterNodes(content.nodes, searchQuery),
+                    loading = content.loading,
+                    onRetry = { reloadKey++ },
                     modifier = Modifier
                         .fillMaxSize()
                         .scrollEndHaptic()
@@ -128,8 +134,10 @@ fun PagesScreen(
  * match nothing are dropped; matching groups keep only their matching children.
  * Never mutates the parsed originals.
  */
-internal fun filterNodes(nodes: List<NodeInfoBase>?, query: String): List<NodeInfoBase> {
-    if (nodes == null || query.isEmpty()) return nodes ?: emptyList()
+internal fun filterNodes(nodes: List<NodeInfoBase>?, query: String): List<NodeInfoBase>? {
+    // Null passes through so the error state survives filtering.
+    if (nodes == null) return null
+    if (query.isEmpty()) return nodes
     val q = query.lowercase()
 
     fun NodeInfoBase.matches(): Boolean =

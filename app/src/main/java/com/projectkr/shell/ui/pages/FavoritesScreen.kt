@@ -99,9 +99,11 @@ val content = rememberPageContent(reloadKey) {
                     ) {
                         Icon(MiuixIcons.More, contentDescription = "更多")
                     }
-                    IconButton(onClick = { reloadKey++ }) {
-                        Icon(MiuixIcons.Refresh, contentDescription = "刷新")
-                    }
+                    com.projectkr.shell.ui.common.HintedAction(
+                        text = "刷新",
+                        icon = MiuixIcons.Refresh,
+                        onClick = { reloadKey++ },
+                    )
                 },
             )
         },
@@ -117,7 +119,9 @@ val content = rememberPageContent(reloadKey) {
         ) {
             NodeScreenBody(
                 controller = controller,
-                nodes = content.nodes ?: emptyList(),
+                nodes = content.nodes,
+                loading = content.loading,
+                onRetry = { reloadKey++ },
                 // Bind the app bar collapse to the list's scroll deltas.
                 modifier = Modifier
                     .fillMaxSize()

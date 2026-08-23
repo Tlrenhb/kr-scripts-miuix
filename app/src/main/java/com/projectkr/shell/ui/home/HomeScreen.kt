@@ -139,9 +139,11 @@ fun HomeScreen(
                 title = "首页",
                 scrollBehavior = scrollBehavior,
                 actions = {
-                    IconButton(onClick = { powerMenu = true }) {
-                        Icon(MiuixIcons.Reset, contentDescription = "电源菜单")
-                    }
+                    com.projectkr.shell.ui.common.HintedAction(
+                        text = "电源菜单",
+                        icon = MiuixIcons.Reset,
+                        onClick = { powerMenu = true },
+                    )
                 },
             )
         },
