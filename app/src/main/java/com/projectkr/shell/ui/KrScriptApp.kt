@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,9 +54,12 @@ import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
 import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
+private enum class TabKind { HOME, PAGES, FAVORITES, ABOUT }
+
 private data class TabItem(
     val label: String,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val kind: TabKind,
 )
 
 /**
@@ -158,13 +162,22 @@ private fun MainTabsScreen(
     onThemeConfigChange: (com.projectkr.shell.ui.theme.KrThemeConfig) -> Unit,
     backStack: MutableList<NavKey>,
 ) {
-    val tabs = listOf(
-        TabItem("首页", MiuixIcons.Home),
-        TabItem("页面", MiuixIcons.ListView),
-        TabItem("收藏", MiuixIcons.Favorites),
-        TabItem("关于", MiuixIcons.Info),
-    )
-    var selectedTab by remember { mutableStateOf(0) }
+    // Original rule: the dashboard tab exists only when root is available AND
+    // kr-script.conf allow_home_page != "0".
+    val runtime = com.projectkr.shell.runtime.KrScriptRuntime
+    val showHome = runtime.isReady && runtime.allowHomePage && runtime.rooted
+    val tabs = buildList {
+        if (showHome) add(TabItem("首页", MiuixIcons.Home, TabKind.HOME))
+        add(TabItem("页面", MiuixIcons.ListView, TabKind.PAGES))
+        add(TabItem("收藏", MiuixIcons.Favorites, TabKind.FAVORITES))
+        add(TabItem("关于", MiuixIcons.Info, TabKind.ABOUT))
+    }
+    var selectedTab by remember { mutableIntStateOf(0) }
+    // Clamp selection when the home tab disappears after init completes.
+    LaunchedEffect(showHome) {
+        if (!showHome && selectedTab == 0) selectedTab = 0 // first visible is 页面
+        selectedTab = selectedTab.coerceIn(0, tabs.lastIndex)
+    }
 
     // Android 13+: ask once for notification permission (bg-task completion).
     val notifPermission = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -212,15 +225,14 @@ private fun MainTabsScreen(
                     }
                 },
                 label = "tab-switch",
-            ) { tab ->
-                when (tab) {
-                    0 -> HomeScreen(
-                        rooted = com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
-                            com.projectkr.shell.runtime.KrScriptRuntime.rooted,
+            ) { tabIndex ->
+                when (tabs.getOrNull(tabIndex.coerceIn(0, tabs.lastIndex))?.kind) {
+                    TabKind.HOME -> HomeScreen(
+                        rooted = runtime.rooted,
                         onOpenFileSelector = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
                     )
-                    1 -> PagesScreen(backStack = backStack)
-                    2 -> FavoritesScreen(backStack = backStack)
+                    TabKind.PAGES -> PagesScreen(backStack = backStack)
+                    TabKind.FAVORITES -> FavoritesScreen(backStack = backStack)
                     else -> AboutScreen(
                         themeConfig = themeConfig,
                         onThemeConfigChange = onThemeConfigChange,

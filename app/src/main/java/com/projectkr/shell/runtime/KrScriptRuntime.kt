@@ -38,8 +38,13 @@ object KrScriptRuntime {
 
     val rooted: Boolean get() = shell.rooted
 
-    /** True once [init] has produced the script environment. */
-    val isReady: Boolean get() = this::scriptEnv.isInitialized
+    /** True once [init] has produced the script environment (observable). */
+    var isReady by androidx.compose.runtime.mutableStateOf(false)
+        private set
+
+    /** Original kr-script.conf key: hide the dashboard tab when "0". */
+    var allowHomePage by androidx.compose.runtime.mutableStateOf(true)
+        private set
 
     /** Evaluator used by PageConfigReader while parsing configs (@string translated). */
     val evaluator = ScriptEvaluator { script, node ->
@@ -107,6 +112,11 @@ object KrScriptRuntime {
 
         val confMap = com.projectkr.krscript.core.config.ConfReader().parse(conf)
 
+        allowHomePage = confMap.getOrDefault(
+            com.projectkr.krscript.core.config.ConfReader.ALLOW_HOME_PAGE,
+            com.projectkr.krscript.core.config.ConfReader.ALLOW_HOME_PAGE_DEFAULT,
+        ) == "1"
+
         val toolkitDir = confMap[com.projectkr.krscript.core.config.ConfReader.TOOLKIT_DIR]
         val variables = buildVariables().toMutableMap()
         // TOOLKIT points at the extracted toolkit dir (original ScriptEnvironmen).
@@ -130,6 +140,7 @@ object KrScriptRuntime {
             ?.takeIf { it.isNotEmpty() }
             ?.let { scriptEnv.executeResult(it, null) }
 
+        isReady = ok
         return ok
     }
 
