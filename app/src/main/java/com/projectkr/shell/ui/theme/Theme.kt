@@ -97,7 +97,7 @@ fun rememberThemeController(config: KrThemeConfig): ThemeController =
         ThemeController(
             colorSchemeMode = config.mode.toSchemeMode(),
             keyColor = KeyColorChoices.getOrNull(config.keyColorIndex)?.second,
-            paletteStyle = PaletteStyleChoices.getOrElse(config.paletteStyleIndex) { it.first }.second,
+            paletteStyle = PaletteStyleChoices.getOrElse(config.paletteStyleIndex) { PaletteStyleChoices[0] }.second,
             colorSpec = if (config.colorSpecIndex == 1) ThemeColorSpec.Spec2025 else ThemeColorSpec.Spec2021,
         )
     }

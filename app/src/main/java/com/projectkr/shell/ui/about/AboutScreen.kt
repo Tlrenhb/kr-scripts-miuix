@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.AnimatedVisibility
 import com.projectkr.shell.BuildConfig
+import com.projectkr.shell.ui.theme.KrColorMode
 import com.projectkr.shell.ui.theme.KeyColorChoices
 import com.projectkr.shell.ui.theme.KrThemeConfig
 import com.projectkr.shell.ui.theme.PaletteStyleChoices
