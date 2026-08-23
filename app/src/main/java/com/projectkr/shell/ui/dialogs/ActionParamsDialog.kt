@@ -29,6 +29,7 @@ import com.projectkr.shell.runtime.ScriptActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
@@ -194,7 +195,7 @@ private fun ParamField(
                 onCheckedChange = { checked -> onValueChange(if (checked) "1" else "0") },
             )
         }
-        "seekbar" -> {
+        param.type == "seekbar" -> {
             // Keep full precision while dragging; quantize the draft only when
             // the gesture finishes (doc: value mirrors onValueChange).
             var sliderValue by remember(param.name) {
@@ -259,14 +260,14 @@ private fun ParamField(
                 )
             }
         }
-        "color" -> {
+        param.type == "color" -> {
             ColorParamRow(
                 title = title,
                 value = value,
                 onRequestPick = onPickColor,
             )
         }
-        "file" -> {
+        param.type == "file" -> {
             FileParamRow(param = param, value = value, onPickClick = onPickClick, onValueChange = onValueChange)
         }
         else -> {

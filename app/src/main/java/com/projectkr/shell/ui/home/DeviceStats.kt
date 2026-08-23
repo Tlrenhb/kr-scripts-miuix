@@ -26,7 +26,9 @@ object DeviceStats {
 
     /** Per-core current frequency (kHz). */
     fun cpuFrequencies(): List<Int> =
-        (0 until coreCount()).map { core -> readLong("/sys/devices/system/cpu/cpu$core/cpufreq/cpuinfo_cur_freq") }
+        (0 until coreCount()).map { core ->
+            readLong("/sys/devices/system/cpu/cpu$core/cpufreq/cpuinfo_cur_freq").toInt()
+        }
 
     fun cpuMinMax(): Pair<List<Int>, List<Int>> {
         val mins = (0 until coreCount()).map { c -> readLong("/sys/devices/system/cpu/cpu$c/cpufreq/scaling_min_freq") }

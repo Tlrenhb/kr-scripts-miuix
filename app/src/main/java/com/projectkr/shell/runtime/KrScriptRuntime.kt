@@ -163,10 +163,8 @@ object KrScriptRuntime {
         // Original FileOwner semantics: serial of the current user handle and
         // the u<serial>_a<appId> owner string used by chown/pm --user.
         val userSerial = runCatching {
-            android.os.UserManager::class.java.let {
-                (context.getSystemService(Context.USER_SERVICE) as android.os.UserManager)
-                    .getSerialNumberForUser(android.os.Process.myUserHandle())
-            }
+            val um = appContext.getSystemService(Context.USER_SERVICE) as android.os.UserManager
+            um.getSerialNumberForUser(android.os.Process.myUserHandle())
         }.getOrDefault(0L)
         map["ANDROID_UID"] = userSerial.toString()
         map["APP_USER_ID"] = runCatching {
