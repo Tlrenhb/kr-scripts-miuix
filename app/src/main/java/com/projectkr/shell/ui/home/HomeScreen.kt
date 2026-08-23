@@ -47,6 +47,8 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val SAMPLE_INTERVAL_MS = 1500L
@@ -148,6 +150,8 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(inner)
+                .scrollEndHaptic()
+                .overScrollVertical()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
         ) {

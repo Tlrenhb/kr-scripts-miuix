@@ -13,6 +13,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.krscript.core.model.PageMenuOption
@@ -134,7 +136,10 @@ fun PageDetailScreen(
             NodeScreenBody(
                 controller = controller,
                 nodes = content.nodes ?: emptyList(),
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scrollEndHaptic()
+                    .overScrollVertical(),
             )
         }
     }

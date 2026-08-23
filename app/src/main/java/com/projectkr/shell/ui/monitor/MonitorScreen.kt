@@ -39,6 +39,8 @@ import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val SAMPLE_INTERVAL_MS = 1500L
@@ -109,7 +111,9 @@ fun MonitorScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(inner),
+                .padding(inner)
+                .scrollEndHaptic()
+                .overScrollVertical(),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
         ) {
             item {
