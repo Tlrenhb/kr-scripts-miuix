@@ -85,7 +85,7 @@ fun LogDialog(
                     clipboard.setPrimaryClip(
                         android.content.ClipData.newPlainText(
                             "log",
-                            session.lines.joinToString("\n") { it.text },
+                            active.lines.joinToString("\n") { it.text },
                         ),
                     )
                     Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
