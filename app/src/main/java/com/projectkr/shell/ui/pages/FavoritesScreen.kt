@@ -21,6 +21,7 @@ import com.projectkr.krscript.core.model.GroupNode
 import com.projectkr.krscript.core.model.NodeInfoBase
 import com.projectkr.krscript.core.model.PageNode
 import com.projectkr.shell.favorites.FavoritesStore
+import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
