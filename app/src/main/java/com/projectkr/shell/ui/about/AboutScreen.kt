@@ -16,8 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.AnimatedVisibility
 import com.projectkr.shell.BuildConfig
-import com.projectkr.shell.ui.theme.KrColorMode
+import com.projectkr.shell.ui.theme.KeyColorChoices
+import com.projectkr.shell.ui.theme.KrThemeConfig
+import com.projectkr.shell.ui.theme.PaletteStyleChoices
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -31,15 +34,21 @@ private val MODE_LABELS = listOf(
     "跟随系统", "浅色", "深色", "动态取色 · 系统", "动态取色 · 浅色", "动态取色 · 深色",
 )
 
+private val SPEC_LABELS = listOf("Spec2021 (兼容)", "Spec2025 (新版规范)")
+
 /**
  * 关于 tab: theme settings, project links and version info.
  */
 @Composable
 fun AboutScreen(
-    colorMode: KrColorMode,
-    onColorModeChange: (KrColorMode) -> Unit,
+    themeConfig: KrThemeConfig,
+    onThemeConfigChange: (KrThemeConfig) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isMonet = themeConfig.mode.ordinal >= KrColorMode.MONET_SYSTEM.ordinal
+    val update = { transform: (KrThemeConfig) -> KrThemeConfig ->
+        onThemeConfigChange(transform(themeConfig))
+    }
     val context = LocalContext.current
 
     Scaffold(
@@ -60,13 +69,45 @@ fun AboutScreen(
             ) {
                 OverlayDropdownPreference(
                     title = "主题模式",
-                    summary = MODE_LABELS.getOrElse(colorMode.ordinal) { MODE_LABELS[0] },
+                    summary = MODE_LABELS.getOrElse(themeConfig.mode.ordinal) { MODE_LABELS[0] },
                     items = MODE_LABELS,
-                    selectedIndex = colorMode.ordinal,
+                    selectedIndex = themeConfig.mode.ordinal,
                     onSelectedIndexChange = { index ->
-                        KrColorMode.fromOrdinal(index).let(onColorModeChange)
+                        update { it.copy(mode = KrColorMode.fromOrdinal(index)) }
                     },
                 )
+
+                AnimatedVisibility(visible = isMonet) {
+                    Column {
+                        OverlayDropdownPreference(
+                            title = "主题颜色",
+                            summary = "动态取色的种子颜色",
+                            items = KeyColorChoices.map { it.first },
+                            selectedIndex = themeConfig.keyColorIndex,
+                            onSelectedIndexChange = { index ->
+                                update { it.copy(keyColorIndex = index) }
+                            },
+                        )
+                        OverlayDropdownPreference(
+                            title = "调色板风格",
+                            summary = PaletteStyleChoices.getOrElse(themeConfig.paletteStyleIndex) { PaletteStyleChoices[0] }.first,
+                            items = PaletteStyleChoices.map { it.first },
+                            selectedIndex = themeConfig.paletteStyleIndex,
+                            onSelectedIndexChange = { index ->
+                                update { it.copy(paletteStyleIndex = index) }
+                            },
+                        )
+                        OverlayDropdownPreference(
+                            title = "颜色规范",
+                            summary = "Spec2025 仅部分风格支持，其余自动回退",
+                            items = SPEC_LABELS,
+                            selectedIndex = themeConfig.colorSpecIndex,
+                            onSelectedIndexChange = { index ->
+                                update { it.copy(colorSpecIndex = index) }
+                            },
+                        )
+                    }
+                }
             }
 
             SmallTitle(text = "项目")

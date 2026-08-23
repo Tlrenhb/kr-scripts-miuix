@@ -36,10 +36,9 @@ import com.projectkr.shell.ui.pages.FavoritesScreen
 import com.projectkr.shell.ui.pages.PagesScreen
 import com.projectkr.shell.ui.navigation.CardMotion
 import com.projectkr.shell.ui.pages.pushIfAbsent
-import com.projectkr.shell.ui.theme.KrColorMode
-import com.projectkr.shell.ui.theme.loadColorMode
+import com.projectkr.shell.ui.theme.loadThemeConfig
 import com.projectkr.shell.ui.theme.rememberThemeController
-import com.projectkr.shell.ui.theme.saveColorMode
+import com.projectkr.shell.ui.theme.saveThemeConfig
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
@@ -70,8 +69,8 @@ private data class TabItem(
 @Composable
 fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
     val context = LocalContext.current
-    var colorMode by remember { mutableStateOf(loadColorMode(context)) }
-    val controller = rememberThemeController(colorMode)
+    var themeConfig by remember { mutableStateOf(loadThemeConfig(context)) }
+    val controller = rememberThemeController(themeConfig)
 
     MiuixTheme(controller = controller) {
         val backStack = rememberNavBackStack<Route>(Route.MainTabs)
@@ -107,10 +106,10 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
         ) {
             entry<Route.MainTabs> {
                 MainTabsScreen(
-                    colorMode = colorMode,
-                    onColorModeChange = {
-                        colorMode = it
-                        saveColorMode(context, it)
+                    themeConfig = themeConfig,
+                    onThemeConfigChange = {
+                        themeConfig = it
+                        saveThemeConfig(context, it)
                     },
                     backStack = backStack,
                 )
@@ -163,8 +162,8 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
  */
 @Composable
 private fun MainTabsScreen(
-    colorMode: KrColorMode,
-    onColorModeChange: (KrColorMode) -> Unit,
+    themeConfig: com.projectkr.shell.ui.theme.KrThemeConfig,
+    onThemeConfigChange: (com.projectkr.shell.ui.theme.KrThemeConfig) -> Unit,
     backStack: MutableList<NavKey>,
 ) {
     val tabs = listOf(
@@ -226,8 +225,8 @@ private fun MainTabsScreen(
                     1 -> PagesScreen(backStack = backStack)
                     2 -> FavoritesScreen(backStack = backStack)
                     else -> AboutScreen(
-                        colorMode = colorMode,
-                        onColorModeChange = onColorModeChange,
+                        themeConfig = themeConfig,
+                        onThemeConfigChange = onThemeConfigChange,
                     )
                 }
             }

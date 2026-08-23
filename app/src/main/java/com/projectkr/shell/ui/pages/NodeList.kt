@@ -163,34 +163,17 @@ private fun SwitchRow(node: SwitchNode, callbacks: NodeListCallbacks) {
     )
 }
 
-/** Star toggle with a pop bounce when favorited. */
+/** Star toggle shown when [NodeListCallbacks.canFavorite] allows it. */
 @Composable
 fun FavoriteStar(node: NodeInfoBase, callbacks: NodeListCallbacks) {
     if (!callbacks.canFavorite(node)) return
     val favorited = callbacks.isFavorite(node)
-    val bounce = remember { androidx.compose.animation.core.Animatable(1f) }
-    LaunchedEffect(favorited) {
-        if (favorited) {
-            bounce.snapTo(1.4f)
-            bounce.animateTo(
-                1f,
-                androidx.compose.animation.core.spring(dampingRatio = 0.4f),
-            )
-        } else {
-            bounce.snapTo(1f)
-        }
-    }
     IconButton(onClick = { callbacks.toggleFavorite(node) }) {
         Icon(
             imageVector = if (favorited) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
             contentDescription = if (favorited) "取消收藏" else "收藏",
             tint = if (favorited) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier
-                .size(18.dp)
-                .graphicsLayer {
-                    scaleX = bounce.value
-                    scaleY = bounce.value
-                },
+            modifier = Modifier.size(18.dp),
         )
     }
 }

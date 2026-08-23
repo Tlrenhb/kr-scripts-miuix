@@ -72,11 +72,6 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     var cpuUsage by remember { mutableFloatStateOf(-1f) }
-    val animCpuUsage by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = cpuUsage.coerceAtLeast(0f),
-        animationSpec = androidx.compose.animation.core.tween(700),
-        label = "cpu-usage",
-    )
     var memUsed by remember { mutableLongStateOf(0L) }
     var memTotal by remember { mutableLongStateOf(0L) }
     var batteryLevel by remember { mutableIntStateOf(-1) }
@@ -87,11 +82,6 @@ fun HomeScreen(
     }
     val cpuSamples = remember { mutableStateListOf<Float>() }
     val memSamples = remember { mutableStateListOf<Float>() }
-    val animMemUsed by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = memUsed.toFloat(),
-        animationSpec = androidx.compose.animation.core.tween(700),
-        label = "mem-used",
-    )
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -167,12 +157,12 @@ fun HomeScreen(
                 Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                     Column(Modifier.padding(16.dp)) {
                         SectionTitle(
-                            "CPU 使用率" + if (cpuUsage >= 0) " ${(animCpuUsage * 100).toInt()}%" else "",
+                            "CPU 使用率" + if (cpuUsage >= 0) " ${(cpuUsage * 100).toInt()}%" else "",
                         )
                         TrendChart(samples = cpuSamples.toList(), maxValue = 1f)
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "内存 ${fmt(animMemUsed.toLong())} / ${fmt(memTotal)}",
+                            "内存 ${fmt(memUsed)} / ${fmt(memTotal)}",
                             fontSize = 13.sp,
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         )
