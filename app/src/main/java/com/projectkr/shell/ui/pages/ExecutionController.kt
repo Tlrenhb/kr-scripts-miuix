@@ -7,8 +7,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.projectkr.krscript.core.model.ActionNode
+import android.content.Context
+import com.projectkr.krscript.core.model.ActionNode
 import com.projectkr.krscript.core.model.PageNode
 import com.projectkr.krscript.core.model.RunnableNode
+import kotlinx.coroutines.delay
 import com.projectkr.shell.runtime.ScriptActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +25,7 @@ class ExecutionController(
     private val scope: CoroutineScope,
     private val openPage: (PageNode) -> Unit,
     private val storeProvider: (() -> com.projectkr.shell.favorites.FavoritesStore)? = null,
+    private val appContext: Context? = null,
 ) : NodeListCallbacks {
 
     override fun onPage(node: PageNode) = openPage(node)
@@ -91,7 +95,8 @@ class ExecutionController(
 
     private fun start(node: RunnableNode, params: Map<String, String>) {
         when (node.shell) {
-            RunnableNode.shellModeBgTask, RunnableNode.shellModeHidden -> runDetached(node, params)
+            RunnableNode.shellModeBgTask, RunnableNode.shellModeHidden ->
+                appContext?.let { runDetached(node, params, it) }
             else -> scope.launch(Dispatchers.IO) {
                 val session = ScriptActions.stream(
                     node = node,
@@ -104,15 +109,20 @@ class ExecutionController(
     }
 
     /** bg-task / hidden runs keep going without the log dialog. */
-    private fun runDetached(node: RunnableNode, params: Map<String, String>) {
+    private fun runDetached(node: RunnableNode, params: Map<String, String>, appContext: Context) {
         scope.launch(Dispatchers.IO) {
             val session = ScriptActions.stream(
                 node = node,
                 script = node.setState.orEmpty(),
                 params = params,
             )
-            // Output drains quietly; completion surfaces through a notification
-            // added with the monitor phase.
+            // Wait quietly for completion, then surface it as a notification.
+            while (session.running) delay(500)
+            com.projectkr.shell.runtime.BgTaskNotifications.notifyDone(
+                appContext,
+                node.title.ifEmpty { "后台任务" },
+                success = session.exitCode == 0,
+            )
         }
     }
 }

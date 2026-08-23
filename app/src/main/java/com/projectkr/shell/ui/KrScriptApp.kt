@@ -166,6 +166,16 @@ private fun MainTabsScreen(
     )
     var selectedTab by remember { mutableStateOf(0) }
 
+    // Android 13+: ask once for notification permission (bg-task completion).
+    val notifPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     // Outer Scaffold owns the NavigationBar; consumeWindowInsets makes the
     // inner per-tab Scaffolds see the already-applied insets exactly once
     // (per the Scaffold KDoc: padding + consumeWindowInsets).

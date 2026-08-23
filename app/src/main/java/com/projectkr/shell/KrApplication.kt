@@ -17,6 +17,7 @@ class KrApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         installCrashLogger()
+        com.projectkr.shell.runtime.BgTaskNotifications.ensureChannel(this)
         Thread {
             val ok = KrScriptRuntime.init(this@KrApplication as Context)
             if (!ok) Log.e(TAG, "KrScript runtime init failed")

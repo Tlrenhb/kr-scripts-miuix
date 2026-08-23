@@ -63,6 +63,7 @@ fun PageDetailScreen(
         ExecutionController(
             scope = content.scope,
             openPage = { node -> openPageNode(context, node, backStack) },
+            appContext = context.applicationContext,
         )
     }
 

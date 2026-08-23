@@ -58,6 +58,7 @@ fun PagesScreen(
             scope = content.scope,
             openPage = { node -> openPageNode(context, node, backStack) },
             storeProvider = { com.projectkr.shell.favorites.FavoritesStore(context) },
+            appContext = context.applicationContext,
         )
     }
 
