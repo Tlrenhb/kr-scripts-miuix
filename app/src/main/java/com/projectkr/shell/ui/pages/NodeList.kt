@@ -4,6 +4,7 @@
 package com.projectkr.shell.ui.pages
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -128,13 +129,48 @@ private fun GroupSection(group: GroupNode, callbacks: NodeListCallbacks) {
             .padding(horizontal = 12.dp)
             .padding(bottom = 12.dp),
     ) {
-        group.children.forEach { child ->
-            when (child) {
-                is SwitchNode -> SwitchRow(child, callbacks)
-                is PickerNode -> PickerRow(child, callbacks)
-                is ActionNode -> ArrowAction(child, callbacks)
-                is PageNode -> PageRow(child, callbacks)
+        Column(Modifier.padding(vertical = 4.dp)) {
+            renderGroupChildren(group.children, callbacks)
+        }
+    }
+}
+
+/**
+ * Renders children inside a group Card. Text nodes and nested groups are
+ * supported (original PageLayoutRender rendered both inside groups).
+ */
+@Composable
+private fun renderGroupChildren(
+    children: List<NodeInfoBase>,
+    callbacks: NodeListCallbacks,
+) {
+    children.forEach { child ->
+        when (child) {
+            is SwitchNode -> SwitchRow(child, callbacks)
+            is PickerNode -> PickerRow(child, callbacks)
+            is ActionNode -> ArrowAction(child, callbacks)
+            is PageNode -> PageRow(child, callbacks)
+            is TextNode -> {
+                if (child.summary.isNotEmpty()) {
+                    Text(
+                        text = child.summary,
+                        fontSize = 13.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                }
+                child.rows.forEach { row -> TextSlice(row) }
             }
+            is GroupNode -> {
+                Text(
+                    text = child.title,
+                    fontSize = 14.sp,
+                    color = MiuixTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+                renderGroupChildren(child.children, callbacks)
+            }
+            else -> {}
         }
     }
 }
@@ -173,10 +209,9 @@ private fun SwitchRow(node: SwitchNode, callbacks: NodeListCallbacks) {
  */
 @Composable
 private fun NodeIcon(node: NodeInfoBase) {
-    val iconPath = when (node) {
-        is com.projectkr.krscript.core.model.ClickableNode -> node.iconPath.trim()
-        else -> ""
-    }
+    val clickable = node as? com.projectkr.krscript.core.model.ClickableNode
+    // IconPathAnalysis order: logo first, then icon.
+    val iconPath = (clickable?.logoPath ?: "").ifEmpty { clickable?.iconPath ?: "" }.trim()
     if (iconPath.isEmpty()) return
 
     var bitmap by remember(iconPath, node.currentPageConfigPath) {
@@ -332,9 +367,22 @@ private fun TextSlice(row: TextNode.TextRow) {
         TextNode.Align.CENTER -> TextAlign.Center
         TextNode.Align.NORMAL -> TextAlign.Start
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val clickableMods = when {
+        row.link.isNotEmpty() -> Modifier.clickable { openInBrowser(context, row.link) }
+        row.activity.isNotEmpty() -> Modifier.clickable {
+            com.projectkr.shell.ui.pages.openActivity(context, row.activity)
+        }
+        row.onClickScript.isNotEmpty() -> Modifier.clickable {
+            // Slice taps run synchronously through the persistent shell.
+            com.projectkr.shell.runtime.ScriptActions.eval(row.onClickScript, null)
+        }
+        else -> Modifier
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .then(clickableMods)
             .then(
                 if (row.bgColor != -1) Modifier.background(Color(row.bgColor)) else Modifier
             ),
@@ -362,9 +410,9 @@ fun parseOptionLines(result: String): ArrayList<SelectItem> {
         if (line.isEmpty()) return@forEach
         val item = SelectItem()
         if (line.contains("|")) {
-            val parts = line.split("|")
+            val parts = line.split("|", limit = 2)
             item.value = parts[0]
-            item.title = parts[1]
+            item.title = parts.getOrElse(1) { parts[0] }
         } else {
             item.value = line
             item.title = line

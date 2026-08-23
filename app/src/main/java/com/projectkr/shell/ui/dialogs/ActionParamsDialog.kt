@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.projectkr.krscript.core.model.ActionNode
 import com.projectkr.krscript.core.model.ActionParamInfo
 import com.projectkr.krscript.core.model.SelectItem
@@ -33,6 +34,7 @@ import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * Action params form rendered in an OverlayDialog (page-scoped host).
@@ -115,7 +117,8 @@ private fun ActionParamsDialogContent(
             ParamField(
                 param = param,
                 value = draft[param.name.orEmpty()].orEmpty(),
-                options = param.options ?: selectOptions[param.name.orEmpty()] ?: emptyList(),
+                options = selectOptions[param.name.orEmpty()]?.takeIf { it.isNotEmpty() }
+                    ?: param.options ?: emptyList(),
                 onPickColor = { colorPickParam = param.name.orEmpty() },
                 onPickClick = {
                     pendingFileParam = param.name.orEmpty()
@@ -127,11 +130,32 @@ private fun ActionParamsDialogContent(
             )
         }
 
+        var errorHint by remember { mutableStateOf<String?>(null) }
+        errorHint?.let { msg ->
+            Text(
+                text = msg,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+            )
+        }
+
         TextButton(
             text = "确定",
             onClick = {
-                onSubmit(draft)
-                onDismiss()
+                // Original readParamsValue: required params block submission.
+                val missing = node.params
+                    ?.filter { it.required == true }
+                    ?.filter { draft[it.name.orEmpty()].isNullOrEmpty() }
+                    ?.mapNotNull { it.title ?: it.label ?: it.name }
+                if (missing.isNullOrEmpty()) {
+                    onSubmit(draft)
+                    onDismiss()
+                } else {
+                    errorHint = "必填项未填写：${missing.joinToString("、")}"
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -161,8 +185,8 @@ private fun ParamField(
     onValueChange: (String) -> Unit,
 ) {
     val title = param.title ?: param.label ?: param.name.orEmpty()
-    when (param.type) {
-        "switch" -> {
+    when {
+        param.type == "switch" -> {
             CheckboxPreference(
                 title = title,
                 summary = param.desc,
@@ -189,10 +213,11 @@ private fun ParamField(
                 valueText = sliderValue.toInt().toString(),
             )
         }
-        "select", "multiple" -> {
+        options.isNotEmpty() || param.type == "select" || param.type == "multiple" -> {
             val titles = options.map { it.title.orEmpty() }
             if (titles.isEmpty()) return
-            if (param.type == "select") {
+            val isMulti = param.multiple || param.type == "multiple"
+            if (!isMulti) {
                 val selectedValue = value
                 val index = options.indexOfFirst { it.value == selectedValue }
                 OverlayDropdownPreference(
@@ -247,9 +272,13 @@ private fun ParamField(
         else -> {
             // text and unknown types fall back to a plain text field.
             TextField(
-                label = title,
+                label = title + if (param.maxLength > 0) " (≤${param.maxLength})" else "",
                 value = value,
-                onValueChange = onValueChange,
+                onValueChange = { newValue ->
+                    onValueChange(
+                        if (param.maxLength > 0) newValue.take(param.maxLength) else newValue,
+                    )
+                },
                 enabled = !param.readonly,
             )
         }
