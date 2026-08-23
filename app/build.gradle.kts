@@ -10,11 +10,13 @@ plugins {
 }
 
 android {
+    // Code namespace keeps com.projectkr.shell so the Kotlin sources stay
+    // untouched; the applicationId is the install identity.
     namespace = "com.projectkr.shell"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.projectkr.shell"
+        applicationId = "com.tlrenhb.krscripts.miuix"
         minSdk = 24
         targetSdk = 37
         versionCode = 5000000
