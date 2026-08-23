@@ -189,6 +189,12 @@ fun HomeScreen(
             }
 
             item {
+                com.projectkr.shell.ui.home.PermissionCard(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
+
+            item {
                 Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                     Column(Modifier.padding(16.dp)) {
                         SectionTitle("CPU 核心频率")
