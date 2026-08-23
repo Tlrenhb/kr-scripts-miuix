@@ -61,6 +61,16 @@ fun PageDetailScreen(
         PageLoader.loadSubPage(page)
     }
 
+    LaunchedEffect(content.loading) {
+        if (!content.loading) refreshing = false
+    }
+    val controller = remember(content.scope) {
+        ExecutionController(
+            scope = content.scope,
+            openPage = { node -> openPageNode(context, node, backStack) },
+            appContext = context.applicationContext,
+        )
+    }
     // Shortcut auto-run: execute the keyed node once, after first load
     // (original ActionPage autoRunItemId behavior).
     LaunchedEffect(content.loading, content.nodes) {
@@ -81,16 +91,7 @@ fun PageDetailScreen(
                 ?.let { controller.onRunnable(it, emptyMap()) }
         }
     }
-    LaunchedEffect(content.loading) {
-        if (!content.loading) refreshing = false
-    }
-    val controller = remember(content.scope) {
-        ExecutionController(
-            scope = content.scope,
-            openPage = { node -> openPageNode(context, node, backStack) },
-            appContext = context.applicationContext,
-        )
-    }
+
 
     // Menu options: inline list from the parent config + options-sh script.
     var menuOptions by remember(nodeKey) { mutableStateOf(page.pageMenuOptions ?: emptyList()) }
