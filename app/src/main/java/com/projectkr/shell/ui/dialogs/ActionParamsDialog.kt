@@ -114,6 +114,17 @@ private fun ActionParamsDialogContent(
         show = show && ready,
         onDismissRequest = onDismiss,
     ) {
+        if (node.warning?.isNotEmpty() == true) {
+            Text(
+                text = node.warning,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            )
+        }
+
         node.params?.forEach { param ->
             ParamField(
                 param = param,
@@ -273,7 +284,8 @@ private fun ParamField(
         else -> {
             // text and unknown types fall back to a plain text field.
             TextField(
-                label = title + if (param.maxLength > 0) " (≤${param.maxLength})" else "",
+                label = title + if (param.placeholder.isNotEmpty()) " · ${param.placeholder}" else "" +
+                    if (param.maxLength > 0) " (≤${param.maxLength})" else "",
                 value = value,
                 onValueChange = { newValue ->
                     onValueChange(

@@ -140,6 +140,7 @@ class ExecutionController(
                     ).show()
                 }
             }
+            hiddenTaskRunning = false
         }
     }
 
@@ -186,7 +187,16 @@ class ExecutionController(
     }
 
     /** bg-task / hidden runs keep going without the log dialog. */
+    /** Original HiddenTaskThread allowed exactly one concurrent hidden run. */
+    var hiddenTaskRunning = false
+        private set
+
     private fun runDetached(node: RunnableNode, params: Map<String, String>, appContext: Context) {
+        if (hiddenTaskRunning) {
+            toast("已有隐藏任务在运行")
+            return
+        }
+        hiddenTaskRunning = true
         scope.launch(Dispatchers.IO) {
             val session = ScriptActions.stream(
                 node = node,
@@ -214,6 +224,7 @@ class ExecutionController(
                     }
                 }
             }
+            hiddenTaskRunning = false
         }
     }
 }

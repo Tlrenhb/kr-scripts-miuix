@@ -19,6 +19,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.projectkr.krscript.core.model.RunnableNode
@@ -43,6 +49,7 @@ fun LogDialog(
     if (session != null) last = session
     val active = last ?: return
 
+    val context = LocalContext.current
     OverlayDialog(
         title = active.node.title,
         show = show,
@@ -69,6 +76,21 @@ fun LogDialog(
         }
 
         Row(modifier = Modifier.padding(top = 12.dp)) {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE)
+                as android.content.ClipboardManager
+            TextButton(
+                text = "复制",
+                onClick = {
+                    clipboard.setPrimaryClip(
+                        android.content.ClipData.newPlainText(
+                            "log",
+                            session.lines.joinToString("\n") { it.text },
+                        ),
+                    )
+                    Toast.makeText(context, "已复制", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier.weight(1f),
+            )
             if (active.running && active.node.interruptable) {
                 TextButton(
                     text = "停止",
@@ -102,7 +124,7 @@ fun ConfirmDialog(
 ) {
     OverlayDialog(
         title = node.title,
-        summary = node.warning.ifEmpty { "确定执行该操作吗？" },
+        summary = node.warning.ifEmpty { node.desc }.ifEmpty { "确定执行该操作吗？" },
         show = show,
         onDismissRequest = onDismiss,
     ) {

@@ -143,6 +143,15 @@ fun NodeScreenBody(
         onClose = { controller.closeSession() },
     )
 
+    // Original DialogLogFragment.onSuccess: autoOff closes the log when done.
+    LaunchedEffect(controller.activeSession?.running, controller.activeSession?.exitCode) {
+        val s = controller.activeSession ?: return@LaunchedEffect
+        if (!s.running && s.node.autoOff) {
+            kotlinx.coroutines.delay(600)
+            controller.closeSession()
+        }
+    }
+
     // Completion flags of VISIBLE sessions: reload-page / auto-finish / blocks.
     LaunchedEffect(controller.activeSession?.running, controller.activeSession?.exitCode) {
         val s = controller.activeSession ?: return@LaunchedEffect
