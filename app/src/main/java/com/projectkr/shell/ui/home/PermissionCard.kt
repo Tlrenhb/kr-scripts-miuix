@@ -28,6 +28,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.projectkr.shell.service.FloatMonitor
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -84,7 +85,7 @@ fun PermissionCard(modifier: Modifier = Modifier) {
             // 通知 (Android 13+ runtime).
             PermRow(
                 label = "通知",
-                granted = notificationsEnabled(context),
+                granted = canPostNotifications(context),
                 summary = "后台任务完成通知",
                 onGrant = { openNotificationSettings(context) },
             )
@@ -147,3 +148,11 @@ fun openNotificationSettings(context: Context) {
     }.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     runCatching { context.startActivity(intent) }
 }
+
+fun canPostNotifications(context: Context): Boolean =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
