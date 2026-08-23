@@ -106,14 +106,41 @@ object KrScriptRuntime {
 
         val confMap = com.projectkr.krscript.core.config.ConfReader().parse(conf)
 
-        return scriptEnv.init(
+        val toolkitDir = confMap[com.projectkr.krscript.core.config.ConfReader.TOOLKIT_DIR]
+        val variables = buildVariables().toMutableMap()
+        // TOOLKIT points at the extracted toolkit dir (original ScriptEnvironmen).
+        if (!toolkitDir.isNullOrEmpty()) {
+            variables["TOOLKIT"] = extractor.getExtractPath(toolkitDir)
+        }
+        // MAGISK_PATH: probe the well-known module roots through root shell.
+        variables["MAGISK_PATH"] = detectMagiskPath()
+
+        val ok = scriptEnv.init(
             executorRef = confMap.getOrDefault(
                 com.projectkr.krscript.core.config.ConfReader.EXECUTOR_CORE,
                 "file:///android_asset/kr-script/executor.sh",
             ),
-            toolkitDir = confMap[com.projectkr.krscript.core.config.ConfReader.TOOLKIT_DIR],
-            variables = buildVariables(),
+            toolkitDir = toolkitDir,
+            variables = variables,
         )
+
+        // before_start_sh runs once after the engine is ready (original key).
+        confMap[com.projectkr.krscript.core.config.ConfReader.BEFORE_START_SH]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { scriptEnv.executeResult(it, null) }
+
+        return ok
+    }
+
+    /** Probes Magisk module roots (values from the original MagiskExtend). */
+    private fun detectMagiskPath(): String {
+        for (path in listOf("/data/adb/modules", "/sbin/.core/img")) {
+            val check = shell.execute("[[ -d '$path' ]] && echo 1 || echo 0")
+            if (check.trim() == "1") {
+                return path.trimEnd('/')
+            }
+        }
+        return ""
     }
 
     /**
@@ -127,6 +154,7 @@ object KrScriptRuntime {
         }.getOrNull()
 
         val map = LinkedHashMap<String, String>()
+        // TOOLKIT / MAGISK_PATH are filled by init() after extraction/probing.
         map["TOOLKIT"] = ""
         map["MAGISK_PATH"] = ""
         map["START_DIR"] = appContext.filesDir.absolutePath.trimEnd('/')
