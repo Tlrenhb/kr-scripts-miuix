@@ -25,6 +25,10 @@ class ExecutionController(
     private val openPage: (PageNode) -> Unit,
     private val storeProvider: (() -> com.projectkr.shell.favorites.FavoritesStore)? = null,
     private val appContext: Context? = null,
+    /** Fired when a completed run asks for a page reload (reload-page / updateBlocks). */
+    val onReloadRequest: () -> Unit = {},
+    /** Fired when a completed run declares auto-finish (close the page). */
+    val onAutoFinish: () -> Unit = {},
 ) : NodeListCallbacks {
 
     override fun onPage(node: PageNode) = openPage(node)
@@ -114,6 +118,31 @@ class ExecutionController(
         }
     }
 
+    /** Runs after any session finishes; honors the original completion flags. */
+    fun onSessionCompleted(session: com.projectkr.shell.runtime.ScriptActions.Session) {
+        val node = session.node
+        if (node.autoFinish) onAutoFinish()
+        if (node.reloadPage || !node.updateBlocks.isNullOrEmpty()) {
+            // updateBlocks originally refreshed only the named blocks; a full
+            // page reload is the compatible superset for this rewrite.
+            onReloadRequest()
+        }
+        // hidden mode surfaces stderr through a toast instead of a notification.
+        if (node.shell == RunnableNode.shellModeHidden) {
+            val errors = session.lines.filter { it.isError }
+            if (errors.isNotEmpty() || session.exitCode != 0) {
+                appContext?.let { ctx ->
+                    android.widget.Toast.makeText(
+                        ctx,
+                        errors.takeLast(3).joinToString("\n") { it.text }
+                            .ifEmpty { "后台脚本执行失败" },
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+        }
+    }
+
     private var pendingParams: Map<String, String> = emptyMap()
 
     fun submitConfirmation() {
@@ -164,13 +193,27 @@ class ExecutionController(
                 script = node.setState.orEmpty(),
                 params = params,
             )
-            // Wait quietly for completion, then surface it as a notification.
             while (session.running) delay(500)
-            com.projectkr.shell.runtime.BgTaskNotifications.notifyDone(
-                appContext,
-                node.title.ifEmpty { "后台任务" },
-                success = session.exitCode == 0,
-            )
+            // Original HiddenTaskThread never posted notifications — it toasted
+            // collected errors only when the run failed.
+            if (node.shell == RunnableNode.shellModeBgTask) {
+                com.projectkr.shell.runtime.BgTaskNotifications.notifyDone(
+                    appContext,
+                    node.title.ifEmpty { "后台任务" },
+                    success = session.exitCode == 0,
+                )
+            } else {
+                val errs = session.lines.filter { it.isError }.takeLast(3)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (errs.isNotEmpty() || session.exitCode != 0) {
+                        android.widget.Toast.makeText(
+                            appContext,
+                            errs.joinToString("\n") { it.text }.ifEmpty { "后台脚本执行失败" },
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }
         }
     }
 }

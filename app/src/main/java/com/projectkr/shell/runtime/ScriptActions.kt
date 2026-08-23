@@ -39,7 +39,10 @@ object ScriptActions {
     /** Quick synchronous script run (switch/picker set, lock checks…). */
     fun eval(script: String?, node: NodeInfoBase?): String {
         if (!KrScriptRuntime.isReady) return ""
-        return KrScriptRuntime.scriptEnv.executeResult(script, node)
+        val raw = KrScriptRuntime.scriptEnv.executeResult(script, node)
+        val ctx = KrScriptRuntime.appContext ?: return raw
+        // @string/@dimen rows localize here exactly as the original did.
+        return raw.split("\n").joinToString("\n") { ShellTranslation.resolveRow(ctx, it) }
     }
 
     /**
@@ -71,7 +74,10 @@ object ScriptActions {
             onLine = { line, isErr ->
                 // Cap the buffer so long-running scripts cannot exhaust memory.
                 if (session.lines.size < MAX_LINES) {
-                    session.lines.add(LogLine(line, isErr))
+                    val translated = KrScriptRuntime.appContext?.let {
+                        com.projectkr.shell.runtime.ShellTranslation.resolveRow(it, line)
+                    } ?: line
+                    session.lines.add(LogLine(translated, isErr))
                 }
             },
             onExit = { code ->

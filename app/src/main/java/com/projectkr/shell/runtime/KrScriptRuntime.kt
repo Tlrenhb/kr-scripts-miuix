@@ -41,12 +41,13 @@ object KrScriptRuntime {
     /** True once [init] has produced the script environment. */
     val isReady: Boolean get() = this::scriptEnv.isInitialized
 
-    /** Evaluator used by PageConfigReader while parsing configs. */
+    /** Evaluator used by PageConfigReader while parsing configs (@string translated). */
     val evaluator = ScriptEvaluator { script, node ->
-        scriptEnv.executeResult(script, node)
+        ShellTranslation.resolveRow(appContext, scriptEnv.executeResult(script, node))
     }
 
-    private lateinit var appContext: Context
+    lateinit var appContext: Context
+        private set
 
     fun init(context: Context): Boolean {
         if (this::scriptEnv.isInitialized) return true
@@ -159,11 +160,18 @@ object KrScriptRuntime {
         map["MAGISK_PATH"] = ""
         map["START_DIR"] = appContext.filesDir.absolutePath.trimEnd('/')
         map["TEMP_DIR"] = appContext.cacheDir.absolutePath
-        map["ANDROID_UID"] = android.os.Process.myUid().toString()
-        // Best-effort linux owner id (uid:gid style), like the original FileOwner.
+        // Original FileOwner semantics: serial of the current user handle and
+        // the u<serial>_a<appId> owner string used by chown/pm --user.
+        val userSerial = runCatching {
+            android.os.UserManager::class.java.let {
+                (context.getSystemService(Context.USER_SERVICE) as android.os.UserManager)
+                    .getSerialNumberForUser(android.os.Process.myUserHandle())
+            }
+        }.getOrDefault(0L)
+        map["ANDROID_UID"] = userSerial.toString()
         map["APP_USER_ID"] = runCatching {
-            val uid = android.os.Process.myUid()
-            "$uid:$uid"
+            val appId = android.os.Process.myUid() % 100000 - 10000
+            "u${userSerial}_a$appId"
         }.getOrDefault("")
         map["ANDROID_SDK"] = Build.VERSION.SDK_INT.toString()
         map["ROOT_PERMISSION"] = rooted.toString()

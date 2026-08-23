@@ -62,6 +62,7 @@ val content = rememberPageContent(reloadKey) {
             scope = content.scope,
             openPage = { node -> openPageNode(context, node, backStack) },
             storeProvider = { store },
+            onReloadRequest = { reloadKey++ },
         )
     }
 

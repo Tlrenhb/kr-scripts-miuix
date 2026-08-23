@@ -16,12 +16,14 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
 /** Power operations from the original DialogPower. */
+/** Commands are the exact strings from the original strings.xml power_*_cmd. */
 enum class PowerAction(val label: String, val command: String) {
-    REBOOT("重启", "reboot"),
-    HOT_REBOOT("热重启", "setprop ctl.restart zygote"),
-    RECOVERY("重启到 Recovery", "reboot recovery"),
-    BOOTLOADER("重启到 Bootloader", "reboot bootloader"),
-    SHUTDOWN("关机", "reboot -p"),
+    REBOOT("重启", "sync;svc power reboot || reboot;"),
+    HOT_REBOOT("热重启", "sync;am restart || busybox killall system_server;"),
+    RECOVERY("重启到 Recovery", "sync;reboot recovery;"),
+    FASTBOOT("重启到 Bootloader", "sync;reboot bootloader;"),
+    EMERGENCY("紧急模式 (EDL)", "sync;reboot edl;"),
+    SHUTDOWN("关机", "sync;svc power shutdown || reboot -p;"),
 }
 
 /**

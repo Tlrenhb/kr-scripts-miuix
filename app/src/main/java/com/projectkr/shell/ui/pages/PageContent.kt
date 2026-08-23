@@ -142,4 +142,10 @@ fun NodeScreenBody(
         show = controller.activeSession != null,
         onClose = { controller.closeSession() },
     )
+
+    // Completion flags of VISIBLE sessions: reload-page / auto-finish / blocks.
+    LaunchedEffect(controller.activeSession?.running, controller.activeSession?.exitCode) {
+        val s = controller.activeSession ?: return@LaunchedEffect
+        if (!s.running) controller.onSessionCompleted(s)
+    }
 }
