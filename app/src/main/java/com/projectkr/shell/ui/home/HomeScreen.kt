@@ -77,11 +77,6 @@ fun HomeScreen(
         animationSpec = androidx.compose.animation.core.tween(700),
         label = "cpu-usage",
     )
-    val animMemUsed by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = memUsed.toFloat(),
-        animationSpec = androidx.compose.animation.core.tween(700),
-        label = "mem-used",
-    )
     var memUsed by remember { mutableLongStateOf(0L) }
     var memTotal by remember { mutableLongStateOf(0L) }
     var batteryLevel by remember { mutableIntStateOf(-1) }
@@ -92,6 +87,11 @@ fun HomeScreen(
     }
     val cpuSamples = remember { mutableStateListOf<Float>() }
     val memSamples = remember { mutableStateListOf<Float>() }
+    val animMemUsed by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = memUsed.toFloat(),
+        animationSpec = androidx.compose.animation.core.tween(700),
+        label = "mem-used",
+    )
 
     LaunchedEffect(Unit) {
         while (true) {
