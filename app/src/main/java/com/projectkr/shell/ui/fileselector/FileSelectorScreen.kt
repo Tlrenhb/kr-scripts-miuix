@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import com.projectkr.shell.ui.pages.FilePickerResult
 import java.io.File
 import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.BreadcrumbBar
+import top.yukonga.miuix.kmp.basic.BreadcrumbItem
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -27,8 +29,8 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
 
 /**
- * Custom file selector (original ActivityFileSelector): browse directories and
- * hand the picked path back through [FilePickerResult].
+ * Custom file selector (original ActivityFileSelector): browse directories via
+ * a breadcrumb path bar and hand the picked path back through [FilePickerResult].
  */
 @Composable
 fun FileSelectorScreen(
@@ -49,11 +51,11 @@ fun FileSelectorScreen(
     val crumbs = remember(currentDir) {
         val parts = currentDir.split("/").filter { it.isNotEmpty() }
         buildList {
-            add(top.yukonga.miuix.kmp.basic.BreadcrumbItem(path = "/", text = "/"))
+            add(BreadcrumbItem(path = "/", text = "/"))
             var acc = ""
             for (part in parts) {
                 acc += "/" + part
-                add(top.yukonga.miuix.kmp.basic.BreadcrumbItem(path = acc, text = part))
+                add(BreadcrumbItem(path = acc, text = part))
             }
         }
     }
@@ -65,7 +67,15 @@ fun FileSelectorScreen(
                 SmallTopAppBar(
                     title = "选择文件",
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        IconButton(onClick = {
+                            // Back goes up one directory; at the root it exits.
+                            val parent = File(currentDir).parent
+                            if (parent != null && parent != currentDir) {
+                                currentDir = parent
+                            } else {
+                                onBack()
+                            }
+                        }) {
                             Icon(MiuixIcons.Back, contentDescription = "返回")
                         }
                     },
@@ -73,26 +83,13 @@ fun FileSelectorScreen(
                 BreadcrumbBar(
                     items = crumbs,
                     onItemClick = { index ->
-                        currentDir = crumbs.getOrNull(index)?.path ?: currentDir
+                        crumbs.getOrNull(index)?.let { segment ->
+                            currentDir = segment.path
+                        }
                     },
                     highlightIndex = crumbs.lastIndex,
                 )
             }
-        },
-    ) { inner ->
-                navigationIcon = {
-                    IconButton(onClick = {
-                        val parent = File(currentDir).parent
-                        if (parent != null && parent != currentDir) {
-                            currentDir = parent
-                        } else {
-                            onBack()
-                        }
-                    }) {
-                        Icon(MiuixIcons.Back, contentDescription = "返回")
-                    }
-                },
-            )
         },
     ) { inner ->
         Column(modifier = Modifier.padding(inner)) {
