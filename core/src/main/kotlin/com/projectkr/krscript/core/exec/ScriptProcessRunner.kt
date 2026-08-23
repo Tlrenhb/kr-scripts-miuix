@@ -41,7 +41,10 @@ class ScriptProcessRunner(
         val invocation = environment.executorCommand(script, tag)
         if (invocation.isEmpty()) return null
 
+        // Caller params first; PAGE_* engine keys are written after so the
+        // engine contract always wins (original ScriptEnvironmen ordering).
         val merged = LinkedHashMap<String, String>()
+        merged.putAll(params)
         if (node != null && node.currentPageConfigPath.isNotEmpty()) {
             val parentDir = node.pageConfigDir
             val currentPath = node.currentPageConfigPath
@@ -60,8 +63,6 @@ class ScriptProcessRunner(
             merged["PAGE_WORK_DIR"] = ""
             merged["PAGE_WORK_FILE"] = ""
         }
-        merged.putAll(params)
-
         val process = try {
             ProcessBuilder(if (rootMode) "su" else "sh").start()
         } catch (ex: Exception) {
@@ -86,17 +87,20 @@ class ScriptProcessRunner(
             }
         }.start()
 
+        // stdout and stderr drain concurrently (original SimpleShellWatcher):
+        // a stderr burst larger than the pipe buffer must never deadlock stdout.
         Thread {
-            run {
-                val reader = BufferedReader(InputStreamReader(process.inputStream, Charsets.UTF_8))
-                try {
-                    while (true) {
-                        val line = reader.readLine() ?: break
-                        onLine(line, false)
-                    }
-                } catch (_: Exception) {
+            val reader = BufferedReader(InputStreamReader(process.inputStream, Charsets.UTF_8))
+            try {
+                while (true) {
+                    val line = reader.readLine() ?: break
+                    onLine(line, false)
                 }
+            } catch (_: Exception) {
             }
+        }.start()
+
+        Thread {
             val errReader = BufferedReader(InputStreamReader(process.errorStream, Charsets.UTF_8))
             try {
                 while (true) {
@@ -105,6 +109,9 @@ class ScriptProcessRunner(
                 }
             } catch (_: Exception) {
             }
+        }.start()
+
+        Thread {
             val code = try {
                 process.waitFor()
             } catch (ex: InterruptedException) {

@@ -44,6 +44,9 @@ class ScriptEnvironment(
      */
     fun init(executorRef: String, toolkitDir: String?, variables: Map<String, String>): Boolean {
         if (inited) return true
+        lastExecutorRef = executorRef
+        lastToolkitDir = toolkitDir
+        lastVariables = variables
         return try {
             val executorRel = AssetExtractor.stripAssetPrefix(executorRef)
             val raw = assets.open(executorRel)?.use { it.readBytes() } ?: return false
@@ -70,10 +73,12 @@ class ScriptEnvironment(
 
     /**
      * Runs [script] with the page context of [node]; returns the captured output
-     * ("error" on shell failure), or "" for empty scripts.
+     * ("error" on shell failure), or "" for empty scripts. A failed init is
+     * retried lazily here (original executeResultRoot re-called init).
      */
     fun executeResult(script: String?, node: NodeInfoBase?): String {
-        if (!inited || script.isNullOrEmpty()) return ""
+        if (!inited && !retryInit()) return ""
+        if (script.isNullOrEmpty()) return ""
 
         val trimmed = script.trim()
         val scriptPath = if (trimmed.startsWith(ASSETS_PREFIX)) {
@@ -116,7 +121,8 @@ class ScriptEnvironment(
      * empty when not inited or the script is empty.
      */
     fun executorCommand(script: String, tag: String): String {
-        if (!inited || script.isEmpty()) return ""
+        if (!inited && !retryInit()) return ""
+        if (script.isEmpty()) return ""
         val trimmed = script.trim()
         val cachePath = if (trimmed.startsWith(ASSETS_PREFIX)) {
             extractScript(trimmed)
@@ -125,6 +131,16 @@ class ScriptEnvironment(
         }
         return "$environmentPath \"$cachePath\" \"$tag\""
     }
+
+    /** Re-attempts the last init arguments (original self-heal behavior). */
+    private fun retryInit(): Boolean {
+        val executor = lastExecutorRef ?: return false
+        return init(executor, lastToolkitDir, lastVariables)
+    }
+
+    private var lastExecutorRef: String? = null
+    private var lastToolkitDir: String? = null
+    private var lastVariables: Map<String, String> = emptyMap()
 
     /** Caches an inline script as `<md5>.sh`; returns its absolute path. */
     private fun createShellCache(script: String): String {

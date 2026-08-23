@@ -37,12 +37,22 @@ class DefaultAssetExtractor(
         history[fileName]?.let { return it }
 
         val rel = AssetExtractor.stripAssetPrefix(fileName)
-        val bytes = try {
+        var bytes = try {
             assets.open(rel)?.use { it.readBytes() } ?: return null
         } catch (ex: Exception) {
             return null
         }
+        // Original FileWrite.writePrivateShellFile normalized DOS endings for
+        // every extracted script (parseText: \r\n→\n, \r\t→\t).
+        if (rel.endsWith(".sh")) {
+            val text = bytes.toString(Charsets.UTF_8)
+                .replace("\r\n", "\n")
+                .replace("\r\t", "\t")
+                .replace("\r", "\n")
+            bytes = text.toByteArray(Charsets.UTF_8)
+        }
         return if (files.writePrivateFile(rel, bytes)) {
+            files.setExecutable(rel)
             val path = files.privateFilePath(rel)
             history[fileName] = path
             path

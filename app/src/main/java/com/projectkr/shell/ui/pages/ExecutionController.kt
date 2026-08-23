@@ -53,11 +53,60 @@ class ExecutionController(
     var lastDraft: Map<String, String> = emptyMap()
 
     override fun onRunnable(node: RunnableNode, params: Map<String, String>) {
+        if (activeSession != null || confirmRequest != null || paramsAction != null) return
+
+        // SDK gates (original ListItemClickable help dialogs, toasted here).
+        val sdk = android.os.Build.VERSION.SDK_INT
+        if (node.minSdkVersion > 0 && sdk < node.minSdkVersion) {
+            toast("需要 Android ${node.minSdkVersion} 及以上版本")
+            return
+        }
+        if (node.maxSdkVersion in 1..999 && sdk > node.maxSdkVersion) {
+            toast("仅支持 Android ${node.maxSdkVersion} 及以下版本")
+            return
+        }
+
+        // lock / lock-state gate: evaluated through the script engine
+        // (original nodeUnlocked: unlock/unlocked/false/0 releases the node).
+        if (node.locked || node.lockShell.isNotEmpty()) {
+            scope.launch(Dispatchers.IO) {
+                val out = if (node.lockShell.isEmpty()) "" else {
+                    ScriptActions.eval(node.lockShell, node).trim()
+                }
+                val lower = out.lowercase()
+                val unlocked = lower == "unlock" || lower == "unlocked" ||
+                    lower == "false" || lower == "0"
+                val lockMsg = when {
+                    node.lockShell.isEmpty() -> "该功能已锁定"
+                    unlocked -> null
+                    else -> out.ifEmpty { "该功能已锁定" }
+                }
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (lockMsg != null) {
+                        toast(lockMsg)
+                    } else {
+                        dispatch(node, params)
+                    }
+                }
+            }
+            return
+        }
+
+        dispatch(node, params)
+    }
+
+    private fun toast(msg: String) {
+        appContext?.let {
+            android.widget.Toast.makeText(it, msg, android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun dispatch(node: RunnableNode, params: Map<String, String>) {
+        val needsConfirm = node.confirm || node.warning.isNotEmpty()
         when {
-            activeSession != null || confirmRequest != null || paramsAction != null -> return
-            node.confirm -> {
-                confirmRequest = node
+            needsConfirm -> {
                 pendingParams = params
+                confirmRequest = node
             }
             node is ActionNode && !node.params.isNullOrEmpty() && params.isEmpty() ->
                 paramsAction = node

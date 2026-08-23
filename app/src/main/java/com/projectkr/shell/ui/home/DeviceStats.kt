@@ -20,18 +20,83 @@ object DeviceStats {
         val batteryTemp: Float,       // ℃, Float.NaN unknown
     )
 
-    fun coreCount(): Int = Runtime.getRuntime().availableProcessors()
+    data class CoreStat(val curKHz: Int, val minKHz: Int, val maxKHz: Int, val load: Float)
 
-    fun cpuFrequencies(): List<Int> {
-        val freqs = ArrayList<Int>()
-        for (core in 0 until coreCount()) {
-            val path =
-                "/sys/devices/system/cpu/cpu$core/cpufreq/scaling_cur_freq"
-            val value = readLong(path)
-            freqs.add((value / 1000).toInt()) // → MHz-ish kHz→kHz keep kHz
-        }
-        return freqs
+    private var prevCoreBusy: LongArray? = null
+
+    /** Per-core current frequency (kHz). */
+    fun cpuFrequencies(): List<Int> =
+        (0 until coreCount()).map { core -> readLong("/sys/devices/system/cpu/cpu$core/cpufreq/cpuinfo_cur_freq") }
+
+    fun cpuMinMax(): Pair<List<Int>, List<Int>> {
+        val mins = (0 until coreCount()).map { c -> readLong("/sys/devices/system/cpu/cpu$c/cpufreq/scaling_min_freq") }
+        val maxs = (0 until coreCount()).map { c -> readLong("/sys/devices/system/cpu/cpu$c/cpufreq/scaling_max_freq") }
+        return mins to maxs
     }
+
+    /**
+     * Per-core load sampled from the per-cpu lines of /proc/stat
+     * (original CpuLoadUtils semantics): returns load 0..1 per core,
+     * or an empty array on the first call.
+     */
+    fun perCoreLoad(): List<Float> {
+        val lines = runCatching {
+            File("/proc/stat").bufferedReader().readLines()
+                .filter { it.startsWith("cpu") && it[3].isDigit() }
+        }.getOrDefault(emptyList())
+        if (lines.isEmpty()) return emptyList()
+        val samples = lines.map { l ->
+            val v = l.split(Regex("\\s+")).drop(1).take(4).map { it.toLong() }
+            longArrayOf(v[0], v[1], v[2], v[3]) // user nice system idle (+iowait folded below)
+        }
+        val last = prevPerCoreBusy
+        prevPerCoreBusy = samples.map { s -> longArrayOf(s[0] + s[1] + s[2] + s[3], s[3]) }.toTypedArray()
+            .let { arr -> arr.flatMap { listOf(it[0], it[1]) } }.toLongArray()
+        if (last == null || last.size != samples.size * 2) return emptyList()
+        return samples.indices.map { i ->
+            val busy = samples[i][0] + samples[i][1] + samples[i][2]
+            val total = busy + samples[i][3]
+            val lBusy = last[i * 2]
+            val lTotal = last[i * 2 + 1]
+            val dt = total - lTotal
+            if (dt > 0) ((busy - lBusy).toFloat() / dt).coerceIn(0f, 1f) else -1f
+        }
+    }
+
+    private var prevPerCoreBusy: LongArray? = null
+
+    /** Swap total/free bytes from /proc/meminfo (original home showed zram/swap info). */
+    fun swapInfo(): Pair<Long, Long> {
+        var total = 0L
+        var free = 0L
+        runCatching {
+            File("/proc/meminfo").bufferedReader().useLines { lines ->
+                lines.forEach { line ->
+                    when {
+                        line.startsWith("SwapTotal:") -> total = line.split(Regex("\\s+"))[1].toLong() * 1024
+                        line.startsWith("SwapFree:") -> free = line.split(Regex("\\s+"))[1].toLong() * 1024
+                    }
+                }
+            }
+        }
+        return free to total
+    }
+
+    /** GPU frequency (kHz) and busy percent from the standard kgsl sysfs. */
+    fun gpuInfo(): Pair<Long, Int> {
+        val clk = readLong("/sys/class/kgsl/kgsl-3d0/gpuclk")
+        var busy = -1
+        runCatching {
+            val txt = File("/sys/class/kgsl/kgsl-3d0/gpubusy").readText().trim()
+            val parts = txt.split(Regex("\\s+"))
+            if (parts.size == 2 && parts[1].toInt() > 0) {
+                busy = (parts[0].toFloat() / parts[1].toFloat() * 100).toInt()
+            }
+        }
+        return clk to busy
+    }
+
+    fun coreCount(): Int = Runtime.getRuntime().availableProcessors()
 
     private var lastCpuSample: LongArray? = null
 
