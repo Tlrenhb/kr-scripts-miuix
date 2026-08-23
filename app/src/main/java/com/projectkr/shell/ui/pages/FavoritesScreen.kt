@@ -39,8 +39,9 @@ import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
 
 /**
- * The 收藏 tab: renders favorited nodes by re-parsing their source configs and
- * filtering to the stored keys — fully interactive, like the original favorites.
+ * The 收藏 tab — original semantics: renders the `favorite_config` XML
+ * (updateFavoritesTab in the original MainActivity). Starred items are an
+ * additional layer appended after the config content.
  */
 @Composable
 fun FavoritesScreen(
