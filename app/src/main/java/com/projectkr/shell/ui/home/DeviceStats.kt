@@ -31,8 +31,12 @@ object DeviceStats {
         }
 
     fun cpuMinMax(): Pair<List<Int>, List<Int>> {
-        val mins = (0 until coreCount()).map { c -> readLong("/sys/devices/system/cpu/cpu$c/cpufreq/scaling_min_freq") }
-        val maxs = (0 until coreCount()).map { c -> readLong("/sys/devices/system/cpu/cpu$c/cpufreq/scaling_max_freq") }
+        val mins = (0 until coreCount()).map { c ->
+            readLong("/sys/devices/system/cpu/cpu$c/cpufreq/scaling_min_freq").toInt()
+        }
+        val maxs = (0 until coreCount()).map { c ->
+            readLong("/sys/devices/system/cpu/cpu$c/cpufreq/scaling_max_freq").toInt()
+        }
         return mins to maxs
     }
 
