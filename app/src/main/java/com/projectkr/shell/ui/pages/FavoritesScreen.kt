@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.krscript.core.model.GroupNode
 import com.projectkr.krscript.core.model.NodeInfoBase
@@ -61,7 +62,11 @@ val content = rememberPageContent(reloadKey) {
     }
 
     val scrollBehavior = MiuixScrollBehavior()
+    val snackbarHostState = remember { top.yukonga.miuix.kmp.basic.SnackbarHostState() }
     Scaffold(
+        snackbarHost = {
+            top.yukonga.miuix.kmp.basic.SnackbarHost(state = snackbarHostState)
+        },
         modifier = modifier,
         topBar = {
             TopAppBar(
@@ -76,9 +81,14 @@ val content = rememberPageContent(reloadKey) {
                                     DropdownItem(
                                         text = "「${node.title}」添加到桌面",
                                         onClick = {
-                                            com.projectkr.shell.shortcut.ShortcutHelper.pinPageShortcut(
-                                                context, node.currentPageConfigPath, node.title,
-                                            )
+                                            if (com.projectkr.shell.shortcut.ShortcutHelper.pinPageShortcut(
+                                                    context, node.currentPageConfigPath, node.title,
+                                                )
+                                            ) {
+                                                content.scope.launch {
+                                                    snackbarHostState.showSnackbar("快捷方式已创建")
+                                                }
+                                            }
                                         },
                                     )
                                 },
@@ -105,7 +115,10 @@ val content = rememberPageContent(reloadKey) {
             NodeScreenBody(
                 controller = controller,
                 nodes = content.nodes ?: emptyList(),
-                modifier = Modifier.fillMaxSize(),
+                // Bind the app bar collapse to the list's scroll deltas.
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
             )
         }
     }

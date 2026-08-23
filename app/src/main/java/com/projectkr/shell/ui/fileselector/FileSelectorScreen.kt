@@ -45,11 +45,41 @@ fun FileSelectorScreen(
         }.getOrDefault(emptyList())
     }
 
+    // Split the current path into breadcrumb segments (root keeps its slash).
+    val crumbs = remember(currentDir) {
+        val parts = currentDir.split("/").filter { it.isNotEmpty() }
+        buildList {
+            add(top.yukonga.miuix.kmp.basic.BreadcrumbItem(path = "/", text = "/"))
+            var acc = ""
+            for (part in parts) {
+                acc += "/" + part
+                add(top.yukonga.miuix.kmp.basic.BreadcrumbItem(path = acc, text = part))
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
-            SmallTopAppBar(
-                title = currentDir,
+            Column {
+                SmallTopAppBar(
+                    title = "选择文件",
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(MiuixIcons.Back, contentDescription = "返回")
+                        }
+                    },
+                )
+                BreadcrumbBar(
+                    items = crumbs,
+                    onItemClick = { index ->
+                        currentDir = crumbs.getOrNull(index)?.path ?: currentDir
+                    },
+                    highlightIndex = crumbs.lastIndex,
+                )
+            }
+        },
+    ) { inner ->
                 navigationIcon = {
                     IconButton(onClick = {
                         val parent = File(currentDir).parent
