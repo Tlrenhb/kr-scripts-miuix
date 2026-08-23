@@ -20,7 +20,12 @@ object ShortcutHelper {
     fun isPinSupported(context: Context): Boolean =
         ShortcutManagerCompat.isRequestPinShortcutSupported(context)
 
-    fun pinPageShortcut(context: Context, configPath: String, title: String): Boolean {
+    fun pinPageShortcut(
+        context: Context,
+        configPath: String,
+        title: String,
+        nodeKey: String = "",
+    ): Boolean {
         if (!isPinSupported(context)) return false
 
         val id = "kr_${(configPath + title).hashCode()}"
@@ -28,6 +33,7 @@ object ShortcutHelper {
             action = Intent.ACTION_VIEW
             putExtra(EXTRA_CONFIG, configPath)
             putExtra(EXTRA_TITLE, title)
+            if (nodeKey.isNotEmpty()) putExtra(EXTRA_KEY, nodeKey)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
 
@@ -41,4 +47,5 @@ object ShortcutHelper {
 
     const val EXTRA_CONFIG = "kr_shortcut_config"
     const val EXTRA_TITLE = "kr_shortcut_title"
+    const val EXTRA_KEY = "kr_shortcut_key"
 }

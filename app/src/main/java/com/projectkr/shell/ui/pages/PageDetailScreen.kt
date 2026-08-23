@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.projectkr.krscript.core.model.PageMenuOption
 import com.projectkr.krscript.core.model.PageNode
+import com.projectkr.krscript.core.model.RunnableNode
 import com.projectkr.shell.navigation.Route
 import com.projectkr.shell.runtime.ScriptActions
 import kotlinx.coroutines.Dispatchers
@@ -55,8 +56,30 @@ fun PageDetailScreen(
         PageRegistry.get(nodeKey) ?: PageNode(configPath).apply { this.title = title }
     }
 
+    var autoRunDone by rememberSaveable { mutableStateOf(false) }
     val content = rememberPageContent(reloadKey) {
         PageLoader.loadSubPage(page)
+    }
+
+    // Shortcut auto-run: execute the keyed node once, after first load
+    // (original ActionPage autoRunItemId behavior).
+    LaunchedEffect(content.loading, content.nodes) {
+        if (!content.loading && !autoRunDone && nodeKey.isNotEmpty()) {
+            autoRunDone = true
+            val flat = com.projectkr.krscript.core.model.GroupNode("").let { root ->
+                buildList {
+                    fun walk(list: List<com.projectkr.krscript.core.model.NodeInfoBase>) {
+                        list.forEach { n ->
+                            add(n)
+                            if (n is com.projectkr.krscript.core.model.GroupNode) walk(n.children)
+                        }
+                    }
+                    walk(content.nodes ?: emptyList())
+                }
+            }
+            flat.filterIsInstance<RunnableNode>().firstOrNull { it.key == nodeKey }
+                ?.let { controller.onRunnable(it, emptyMap()) }
+        }
     }
     LaunchedEffect(content.loading) {
         if (!content.loading) refreshing = false

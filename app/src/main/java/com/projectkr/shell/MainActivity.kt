@@ -46,4 +46,4 @@ class MainActivity : ComponentActivity() {
 }
 
 /** Plain data carrier for a shortcut-triggered page open. */
-data class ShortcutLaunch(val configPath: String, val title: String)
+data class ShortcutLaunch(val configPath: String, val title: String, val nodeKey: String = "")

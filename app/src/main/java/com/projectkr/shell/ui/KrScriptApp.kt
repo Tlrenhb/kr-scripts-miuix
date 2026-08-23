@@ -78,7 +78,7 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
                 val route = Route.PageDetail(
                     configPath = launch.configPath,
                     title = launch.title,
-                    nodeKey = "",
+                    nodeKey = launch.nodeKey,
                 )
                 if (backStack.none { it == route }) backStack.add(route)
             }
