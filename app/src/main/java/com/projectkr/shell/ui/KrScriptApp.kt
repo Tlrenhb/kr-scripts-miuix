@@ -6,8 +6,6 @@ package com.projectkr.shell.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -34,7 +32,6 @@ import com.projectkr.shell.ui.online.OnlinePageScreen
 import com.projectkr.shell.ui.pages.PageDetailScreen
 import com.projectkr.shell.ui.pages.FavoritesScreen
 import com.projectkr.shell.ui.pages.PagesScreen
-import com.projectkr.shell.ui.navigation.CardMotion
 import com.projectkr.shell.ui.pages.pushIfAbsent
 import com.projectkr.shell.ui.theme.loadThemeConfig
 import com.projectkr.shell.ui.theme.rememberThemeController
@@ -48,7 +45,6 @@ import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.ListView
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
-import top.yukonga.miuix.kmp.nav.core.NavCornerClipMode
 import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
 import top.yukonga.miuix.kmp.nav.core.NavKey
 import top.yukonga.miuix.kmp.nav.core.rememberNavBackStack
@@ -91,16 +87,12 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
         NavDisplay(
             backStack = backStack,
             onBack = onBack,
-            // Miuix motion system: HyperOS card transition — classic 450ms
-            // slide pair for button navigation, gesture-scaled card with
-            // velocity bounce for predictive back / edge swipe. All-corner
-            // clip with the device radius; both layers round while covered.
-            transition = CardMotion.crossActivity,
+            // Miuix motion system: slide+parallax transitions, device-corner
+            // clipping while pages animate over each other, input blocked
+            // mid-transition, and edge-swipe back on pushed pages.
+            transition = NavTransitions.MiuixDefault,
             effects = NavDisplayEffects(
                 cornerClipRadius = rememberNavSystemCornerRadius(),
-                cornerClipMode = NavCornerClipMode.All,
-                dimAmount = 0.32f,
-                backdropColor = MiuixTheme.colorScheme.background,
                 blockInputDuringTransition = true,
             ),
         ) {
@@ -199,19 +191,14 @@ private fun MainTabsScreen(
             androidx.compose.animation.AnimatedContent(
                 targetState = selectedTab,
                 transitionSpec = {
-                    // Directional slide with depth: reduced travel plus a
-                    // slight scale so the outgoing tab reads as a layer below.
+                    // Directional slide: moving right slides content left.
                     val toRight = targetState > initialState
                     if (toRight) {
-                        (slideInHorizontally { it / 3 } + fadeIn() +
-                            scaleIn(initialScale = 0.96f)) togetherWith
-                            (slideOutHorizontally { -it / 3 } + fadeOut() +
-                                scaleOut(targetScale = 0.96f))
+                        (slideInHorizontally { it } + fadeIn()) togetherWith
+                            (slideOutHorizontally { -it } + fadeOut())
                     } else {
-                        (slideInHorizontally { -it / 3 } + fadeIn() +
-                            scaleIn(initialScale = 0.96f)) togetherWith
-                            (slideOutHorizontally { it / 3 } + fadeOut() +
-                                scaleOut(targetScale = 0.96f))
+                        (slideInHorizontally { -it } + fadeIn()) togetherWith
+                            (slideOutHorizontally { it } + fadeOut())
                     }
                 },
                 label = "tab-switch",
