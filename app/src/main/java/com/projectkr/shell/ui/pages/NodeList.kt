@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.projectkr.krscript.core.model.ActionNode
+import com.projectkr.krscript.core.config.PathAnalysis
 import com.projectkr.krscript.core.model.GroupNode
 import com.projectkr.krscript.core.model.NodeInfoBase
 import com.projectkr.krscript.core.model.PageNode
@@ -178,7 +180,7 @@ private fun NodeIcon(node: NodeInfoBase) {
     if (iconPath.isEmpty()) return
 
     var bitmap by remember(iconPath, node.currentPageConfigPath) {
-        mutableStateOf<android.graphics.Bitmap?>(null)
+        mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
     }
     LaunchedEffect(iconPath, node.currentPageConfigPath) {
         bitmap = withContext(Dispatchers.IO) {
