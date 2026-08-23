@@ -4,6 +4,7 @@
 package com.projectkr.shell.ui.fileselector
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -86,7 +87,7 @@ fun FileSelectorScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var currentDir by rememberSaveable { mutableStateOf(startDir.ifEmpty { "/") } }
+    var currentDir by rememberSaveable { mutableStateOf(startDir.ifEmpty { "/" }) }
     var entries by remember(currentDir) { mutableStateOf<List<DirEntry>?>(null) }
 
     LaunchedEffect(currentDir) {
