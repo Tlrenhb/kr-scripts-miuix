@@ -137,6 +137,9 @@ class PageConfigReader(
                             switch != null -> tagStartInSwitch(switch, parser)
                             picker != null -> tagStartInPicker(picker, parser)
                             text != null -> tagStartInText(text, parser)
+                            // Root-level <resource>: extracted even outside any
+                            // node context (original chain had this final else).
+                            "resource" == parser.name -> resourceNode(parser)
                         }
                     }
                     isRootNode = false
