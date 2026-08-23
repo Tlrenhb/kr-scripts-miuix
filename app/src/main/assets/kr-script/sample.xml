@@ -7,12 +7,12 @@
     </text>
 
     <group title="基础控件" key="basic">
-        <switch title="示例开关" summary="get/set 脚本绑定">
+        <switch key="sample.switch" title="示例开关" summary="get/set 脚本绑定">
             <get>echo 0</get>
             <set>echo "switch: $state"</set>
         </switch>
 
-        <picker title="示例选择器" summary="单选下拉">
+        <picker key="sample.picker" title="示例选择器" summary="单选下拉">
             <option val="performance">性能模式</option>
             <option val="balance">均衡模式</option>
             <option val="powersave">省电模式</option>
@@ -20,20 +20,20 @@
             <set>echo "picker: $state"</set>
         </picker>
 
-        <action title="简单动作" summary="直接执行脚本并显示日志">
+        <action key="sample.simple-action" title="简单动作" summary="直接执行脚本并显示日志">
             <script>
                 echo "设备: $(getprop ro.product.model)"
                 echo "内核: $(uname -r)"
             </script>
         </action>
 
-        <action title="带确认的危险动作" confirm="true" warning="此动作仅作演示，不会修改系统。">
+        <action key="sample.confirm-action" title="带确认的危险动作" confirm="true" warning="此动作仅作演示，不会修改系统。">
             <script>echo confirmed</script>
         </action>
     </group>
 
     <group title="参数表单演示" key="params">
-        <action title="完整参数类型" summary="七种参数类型的参数弹窗">
+        <action key="sample.params-action" title="完整参数类型" summary="七种参数类型的参数弹窗">
             <param name="msg" type="text" title="文本" value="hello" />
             <param name="mode" type="select" title="单选">
                 <option val="fast">快速</option>
@@ -53,11 +53,11 @@
     </group>
 
     <group title="页面导航" key="nav">
-        <page title="子页面" summary="进入二级页面的动作列表">
+        <page key="sample.subpage" title="子页面" summary="进入二级页面的动作列表">
             <config>file:///android_asset/kr-script/subpage.xml</config>
         </page>
 
-        <page title="在线文档" summary="浏览器打开 KrScript 文档">
+        <page key="sample.online-docs" title="在线文档" summary="浏览器打开 KrScript 文档">
             <link>https://github.com/Tlrenhb/kr-scripts-miuix</link>
         </page>
     </group>

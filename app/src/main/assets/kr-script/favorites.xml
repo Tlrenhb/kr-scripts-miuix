@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <kr-script>
-    <group title="收藏">
-        <text title="收藏夹是空的">
-            <summary>在「页面」中点击条目右侧的收藏按钮添加</summary>
-        </text>
-    </group>
+    <text title="收藏夹">
+        <summary>在「页面」中点击条目右侧的 ☆ 星标即可收藏；点亮后这里会显示同样的功能条目。</summary>
+    </text>
 </kr-script>
