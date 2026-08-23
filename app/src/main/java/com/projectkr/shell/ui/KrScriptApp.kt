@@ -3,6 +3,12 @@
 
 package com.projectkr.shell.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -183,8 +189,19 @@ private fun MainTabsScreen(
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding),
         ) {
-            androidx.compose.animation.Crossfade(
+            androidx.compose.animation.AnimatedContent(
                 targetState = selectedTab,
+                transitionSpec = {
+                    // Directional slide: moving right slides content left.
+                    val toRight = targetState > initialState
+                    if (toRight) {
+                        (slideInHorizontally { it } + fadeIn()) togetherWith
+                            (slideOutHorizontally { -it } + fadeOut())
+                    } else {
+                        (slideInHorizontally { -it } + fadeIn()) togetherWith
+                            (slideOutHorizontally { it } + fadeOut())
+                    }
+                },
                 label = "tab-switch",
             ) { tab ->
                 when (tab) {
