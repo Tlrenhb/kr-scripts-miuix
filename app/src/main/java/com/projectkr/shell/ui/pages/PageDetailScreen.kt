@@ -119,19 +119,16 @@ fun PageDetailScreen(
                 // Default: the page handler script receives $state/$menu_id,
                 // mirroring the original menuItemExecute contract.
                 if (page.pageHandlerSh.isNotEmpty()) {
-                    scope.launch(Dispatchers.IO) {
+                    content.scope.launch(Dispatchers.IO) {
                         ScriptActions.stream(
-                            node = option.apply {
-                                setState = page.pageHandlerSh
-                                title = option.title
-                            },
+                            node = option,
                             script = page.pageHandlerSh,
                             params = mapOf(
                                 "menu_id" to option.key,
                                 "state" to option.title,
                             ),
                         )
-                    }.let { }
+                    }
                 } else {
                     controller.onRunnable(option, emptyMap())
                 }
