@@ -134,6 +134,7 @@ private fun ActionParamsDialogContent(
                 options = selectOptions[param.name.orEmpty()]?.takeIf { it.isNotEmpty() }
                     ?: param.options ?: emptyList(),
                 onPickColor = { colorPickParam = param.name.orEmpty() },
+                onPickApp = { appChooserFor = param.name.orEmpty() },
                 onPickClick = {
                     pendingFileParam = param.name.orEmpty()
                     // SAF mime filter from the suffix mapping when available.
@@ -222,6 +223,7 @@ private fun ParamField(
     value: String,
     options: List<SelectItem>,
     onPickColor: () -> Unit,
+    onPickApp: () -> Unit,
     onPickClick: () -> Unit,
     onValueChange: (String) -> Unit,
 ) {
@@ -302,7 +304,7 @@ private fun ParamField(
         }
         param.type == "app" || param.type == "packages" -> {
             val isMulti = param.multiple || param.type == "packages"
-            TextButton(text = "选择应用", onClick = { appChooserFor = param.name.orEmpty() })
+            TextButton(text = "选择应用", onClick = onPickApp)
             if (value.isNotEmpty()) {
                 Text(
                     text = "当前：$value",

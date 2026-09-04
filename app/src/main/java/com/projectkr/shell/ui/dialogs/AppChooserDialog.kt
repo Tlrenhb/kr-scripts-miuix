@@ -3,6 +3,7 @@
 
 package com.projectkr.shell.ui.dialogs
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
