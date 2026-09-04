@@ -89,6 +89,11 @@ class ScriptProcessRunner(
 
         // stdout and stderr drain concurrently (original SimpleShellWatcher):
         // a stderr burst larger than the pipe buffer must never deadlock stdout.
+        // The exit callback fires only after BOTH streams reach EOF and the
+        // process has terminated, so events are complete before exit.
+        val stdoutDone = java.util.concurrent.CountDownLatch(1)
+        val stderrDone = java.util.concurrent.CountDownLatch(1)
+
         Thread {
             val reader = BufferedReader(InputStreamReader(process.inputStream, Charsets.UTF_8))
             try {
@@ -97,6 +102,8 @@ class ScriptProcessRunner(
                     onLine(line, false)
                 }
             } catch (_: Exception) {
+            } finally {
+                stdoutDone.countDown()
             }
         }.start()
 
@@ -108,16 +115,24 @@ class ScriptProcessRunner(
                     onLine(line, true)
                 }
             } catch (_: Exception) {
+            } finally {
+                stderrDone.countDown()
             }
         }.start()
 
         Thread {
-            val code = try {
-                process.waitFor()
-            } catch (ex: InterruptedException) {
-                -1
+            try {
+                stdoutDone.await(60, java.util.concurrent.TimeUnit.SECONDS)
+                stderrDone.await(60, java.util.concurrent.TimeUnit.SECONDS)
+                val code = try {
+                    process.waitFor()
+                } catch (ex: InterruptedException) {
+                    -1
+                }
+                onExit(code)
+            } catch (_: Exception) {
+                onExit(-1)
             }
-            onExit(code)
         }.start()
 
         return process
