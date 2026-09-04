@@ -1,465 +1,216 @@
 // Copyright 2026, kr-scripts-miuix contributors
 // SPDX-License-Identifier: GPL-3.0
 
-package com.projectkr.shell.ui.home
+package com.projectkr.shell.runtime
 
-import android.app.Activity
-import android.os.Build
-import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.projectkr.krscript.core.model.RunnableNode
-import com.projectkr.shell.runtime.KrScriptRuntime
-import com.projectkr.shell.runtime.ScriptActions
-import com.projectkr.shell.ui.dialogs.LogDialog
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
-import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.Reset
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.utils.overScrollVertical
-import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import android.content.Context
+import android.os.Build
+import android.os.Environment
+import com.projectkr.krscript.core.config.ScriptEvaluator
+import com.projectkr.krscript.core.exec.ScriptEnvironment
 
-private const val SAMPLE_INTERVAL_MS = 1500L
-private const val MAX_SAMPLES = 60
-
-private data class StatsSample(
-    val usage: Float,
-    val freqs: List<Int>,
-    val memUsed: Long,
-    val memTotal: Long,
-    val level: Int,
-    val temp: Float,
-)
+import com.projectkr.krscript.core.runtime.KeepShellRunner
+import com.projectkr.krscript.core.runtime.PrivateFileStore
+import com.projectkr.krscript.core.runtime.ShellRunner
+import java.io.File
+import java.io.InputStream
 
 /**
- * 首页: device info, CPU trend + per-core frequencies, memory usage, battery
- * status and the power menu — mirroring the original FragmentHome.
+ * Application-scoped bridge between the pure-JVM `:core` engine and Android.
+ * Initialized once from [KrApplication.onCreate].
  */
-@Composable
-fun HomeScreen(
-    rooted: Boolean,
-    onOpenFileSelector: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var cpuUsage by remember { mutableFloatStateOf(-1f) }
-    val animCpuUsage by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = cpuUsage.coerceAtLeast(0f),
-        animationSpec = androidx.compose.animation.core.tween(700),
-        label = "cpu-usage",
-    )
-    var memUsed by remember { mutableLongStateOf(0L) }
-    var memTotal by remember { mutableLongStateOf(0L) }
-    var batteryLevel by remember { mutableIntStateOf(-1) }
-    var batteryTemp by remember { mutableStateOf(Float.NaN) }
-    var coreFreqs by remember { mutableStateOf<List<Int>>(emptyList()) }
-    var coreMins by remember { mutableStateOf<List<Int>>(emptyList()) }
-    var coreMaxs by remember { mutableStateOf<List<Int>>(emptyList()) }
-    var coreLoads by remember { mutableStateOf<List<Float>>(emptyList()) }
-    var swapUsed by remember { mutableLongStateOf(0L) }
-    var swapTotal by remember { mutableLongStateOf(0L) }
-    var gpuFreqKHz by remember { mutableLongStateOf(0L) }
-    var gpuLoad by remember { mutableIntStateOf(-1) }
-    var floatSummary by remember {
-        mutableStateOf(if (com.projectkr.shell.service.FloatMonitor.running) "运行中 · 点击停止" else "在桌面显示 CPU/RAM 悬浮窗")
-    }
-    val cpuSamples = remember { mutableStateListOf<Float>() }
-    val memSamples = remember { mutableStateListOf<Float>() }
-    val animMemUsed by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = memUsed.toFloat(),
-        animationSpec = androidx.compose.animation.core.tween(700),
-        label = "mem-used",
-    )
+object KrScriptRuntime {
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            val sample = withContext(Dispatchers.IO) {
-                StatsSample(
-                    usage = DeviceStats.cpuUsage(),
-                    freqs = DeviceStats.cpuFrequencies(),
-                    memUsed = DeviceStats.memoryInfo().first,
-                    memTotal = DeviceStats.memoryInfo().second,
-                    level = DeviceStats.batteryLevel(),
-                    temp = DeviceStats.batteryTemp(),
-                )
-            }
-            if (sample.usage >= 0f) {
-                cpuSamples.add(sample.usage)
-                if (cpuSamples.size > MAX_SAMPLES) cpuSamples.removeAt(0)
-            }
-            val frac =
-                if (sample.memTotal > 0) sample.memUsed.toFloat() / sample.memTotal else 0f
-            memSamples.add(frac)
-            if (memSamples.size > MAX_SAMPLES) memSamples.removeAt(0)
+    lateinit var shell: KeepShellRunner
+        private set
 
-            cpuUsage = sample.usage
-            coreFreqs = sample.freqs
-            memUsed = sample.memUsed
-            memTotal = sample.memTotal
-            batteryLevel = sample.level
-            batteryTemp = sample.temp
+    lateinit var scriptEnv: ScriptEnvironment
+        private set
 
-            val mm = withContext(Dispatchers.IO) { DeviceStats.cpuMinMax() }
-            coreMins = mm.first
-            coreMaxs = mm.second
-            coreLoads = withContext(Dispatchers.IO) { DeviceStats.perCoreLoad() }
-            val swap = withContext(Dispatchers.IO) { DeviceStats.swapInfo() }
-            swapUsed = swap.first
-            swapTotal = swap.second
-            val gpu = withContext(Dispatchers.IO) { DeviceStats.gpuInfo() }
-            gpuFreqKHz = gpu.first
-            gpuLoad = gpu.second
-            delay(SAMPLE_INTERVAL_MS)
-        }
+    lateinit var extractor: com.projectkr.krscript.core.runtime.AssetExtractor
+        private set
+
+    lateinit var assetSource: com.projectkr.krscript.core.runtime.AssetSource
+        private set
+
+    lateinit var fileStore: PrivateFileStore
+        private set
+
+    val rooted: Boolean get() = shell.rooted
+
+    /** True once [init] has produced the script environment (observable). */
+    var isReady by androidx.compose.runtime.mutableStateOf(false)
+        private set
+
+    /** Original kr-script.conf key: hide the dashboard tab when "0". */
+    var allowHomePage by androidx.compose.runtime.mutableStateOf(true)
+        private set
+
+    /** Evaluator used by PageConfigReader while parsing configs (@string translated). */
+    val evaluator = ScriptEvaluator { script, node ->
+        ShellTranslation.resolveRow(appContext, scriptEnv.executeResult(script, node))
     }
 
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var powerMenu by remember { mutableStateOf(false) }
+    lateinit var appContext: Context
+        private set
 
-    // Original CheckRootStatus: a non-dismissable retry/skip gate on first entry.
-    var showRootGuide by remember {
-        mutableStateOf(com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
-            !com.projectkr.shell.runtime.KrScriptRuntime.rooted)
-    }
-    if (showRootGuide && !rooted) {
-        top.yukonga.miuix.kmp.overlay.OverlayDialog(
-            title = "未检测到 ROOT 权限",
-            summary = "本应用的功能大多需要 ROOT。你可以重试授权、跳过继续使用非 ROOT 功能，或退出应用。",
-            show = true,
-            onDismissRequest = { showRootGuide = false },
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                top.yukonga.miuix.kmp.basic.TextButton(
-                    text = "重试",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        showRootGuide = false
-                        Thread {
-                            val ok = com.projectkr.shell.runtime.KrScriptRuntime.retry()
-                            if (ok && com.projectkr.shell.runtime.KrScriptRuntime.rooted) {
-                                kotlinx.coroutines.withContext(Dispatchers.Main) {
-                                    Toast.makeText(context, "ROOT 已授权", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        }.start()
-                    },
-                )
-                top.yukonga.miuix.kmp.basic.TextButton(
-                    text = "跳过",
-                    modifier = Modifier.weight(1f),
-                    onClick = { showRootGuide = false },
-                )
-                top.yukonga.miuix.kmp.basic.TextButton(
-                    text = "退出",
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        (context as? Activity)?.finishAffinity()
-                    },
-                )
-            }
-        }
-    }
-    var session by remember { mutableStateOf<ScriptActions.Session?>(null) }
+    fun init(context: Context): Boolean {
+        if (initialized) return true
+        appContext = context.applicationContext
 
-    val scrollBehavior = MiuixScrollBehavior()
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = "首页",
-                scrollBehavior = scrollBehavior,
-                actions = {
-                    com.projectkr.shell.ui.common.HintedAction(
-                        text = "电源菜单",
-                        icon = MiuixIcons.Reset,
-                        onClick = { powerMenu = true },
-                    )
-                },
-            )
-        },
-    ) { inner ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(inner)
-                .scrollEndHaptic()
-                .overScrollVertical()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
-        ) {
-            item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        SectionTitle("设备信息")
-                        InfoRow("型号", Build.MODEL)
-                        InfoRow("Android", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")")
-                        InfoRow("内核", System.getProperty("os.version").orEmpty())
-                        InfoRow("ROOT", if (rooted) "已授权" else "未授权")
-                    }
+        shell = KeepShellRunner.createWithFallback()
+
+        val assets = object : com.projectkr.krscript.core.runtime.AssetSource {
+            override fun open(path: String): InputStream? =
+                try {
+                    appContext.assets.open(path)
+                } catch (ex: Exception) {
+                    null
                 }
-            }
 
-            item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        SectionTitle(
-                            "CPU 使用率" + if (cpuUsage >= 0) " ${(animCpuUsage * 100).toInt()}%" else "",
-                        )
-                        TrendChart(samples = cpuSamples.toList(), maxValue = 1f)
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            "内存 ${fmt(animMemUsed.toLong())} / ${fmt(memTotal)}",
-                            fontSize = 13.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                        LinearProgressIndicator(
-                            progress = if (memTotal > 0) memUsed.toFloat() / memTotal else 0f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp),
-                        )
-                        if (swapTotal > 0) {
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                "Swap ${fmt(swapUsed)} / ${fmt(swapTotal)}",
-                                fontSize = 13.sp,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                            )
-                        }
-                        Spacer(Modifier.height(6.dp))
-                        TrendChart(samples = memSamples.toList(), maxValue = 1f)
-                        if (rooted) {
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                top.yukonga.miuix.kmp.basic.TextButton(
-                                    text = "清理内存",
-                                    modifier = Modifier.weight(1f),
-                                    onClick = {
-                                        scope.launch(Dispatchers.IO) {
-                                            KrScriptRuntime.shell.execute(
-                                                "sync\necho 3 > /proc/sys/vm/drop_caches\necho 1 > /proc/sys/vm/compact_memory",
-                                            )
-                                        }
-                                    },
-                                )
-                                top.yukonga.miuix.kmp.basic.TextButton(
-                                    text = "清理 Swap",
-                                    modifier = Modifier.weight(1f),
-                                    onClick = {
-                                        scope.launch(Dispatchers.IO) {
-                                            KrScriptRuntime.shell.execute(
-                                                "sync\necho 1 > /proc/sys/vm/compact_memory",
-                                            )
-                                        }
-                                    },
-                                )
-                            }
-                        }
-                    }
+            override fun list(dir: String): List<String>? =
+                try {
+                    appContext.assets.list(dir)?.toList()
+                } catch (ex: Exception) {
+                    null
                 }
-            }
-
-            item {
-                com.projectkr.shell.ui.home.PermissionCard(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                )
-            }
-
-            item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        SectionTitle("CPU 核心频率")
-                        if (coreFreqs.isEmpty()) {
-                            Text("(暂无数据)", fontSize = 13.sp)
-                        } else {
-                            coreFreqs.forEachIndexed { index, freq ->
-                                val load = coreLoads.getOrNull(index) ?: -1f
-                                val minMhz = coreMins.getOrNull(index)?.div(1000) ?: 0
-                                val maxMhz = coreMaxs.getOrNull(index)?.div(1000) ?: 0
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text(
-                                        "CPU $index" + if (load >= 0) " · ${(load * 100).toInt()}%" else "",
-                                        fontSize = 13.sp,
-                                    )
-                                    Text(
-                                        when {
-                                            freq <= 0 -> "-"
-                                            minMhz > 0 && maxMhz > 0 -> "${freq / 1000} MHz ($minMhz~$maxMhz)"
-                                            else -> "${freq / 1000} MHz"
-                                        },
-                                        fontSize = 13.sp,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                if (gpuFreqKHz > 0) {
-                    Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                        Column(Modifier.padding(16.dp)) {
-                            SectionTitle(
-                                "GPU" + if (gpuLoad >= 0) " · $gpuLoad%" else "",
-                            )
-                            Text(
-                                "${gpuFreqKHz / 1000000.0} MHz",
-                                fontSize = 13.sp,
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        SectionTitle("电池")
-                        InfoRow("电量", if (batteryLevel >= 0) "$batteryLevel%" else "-")
-                        InfoRow(
-                            "温度",
-                            if (!batteryTemp.isNaN()) String.format("%.1f ℃", batteryTemp) else "-",
-                        )
-                    }
-                }
-            }
-
-            item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    ArrowPreference(
-                        title = "悬浮窗监控",
-                        summary = floatSummary,
-                        onClick = {
-                            com.projectkr.shell.service.FloatMonitor.toggle(context)
-                            floatSummary = if (com.projectkr.shell.service.FloatMonitor.running) {
-                                "运行中 · 点击停止"
-                            } else {
-                                "在桌面显示 CPU/RAM 悬浮窗"
-                            }
-                        },
-                    )
-                    ArrowPreference(
-                        title = "选择文件",
-                        summary = "浏览设备文件",
-                        onClick = onOpenFileSelector,
-                    )
-                }
-            }
         }
 
-        // Overlay dialogs must stay inside the Scaffold popup host, composed
-        // with `show` bound to state so the hide animation runs.
-        var logVisible by remember { mutableStateOf(false) }
-        LaunchedEffect(session) {
-            if (session != null) {
-                logVisible = true
-            }
+        val files = object : PrivateFileStore {
+            override fun privateDir(): String = appContext.filesDir.absolutePath
+
+            override fun writePrivateFile(relPath: String, bytes: ByteArray): Boolean =
+                try {
+                    val f = File(appContext.filesDir, relPath)
+                    f.parentFile?.mkdirs()
+                    f.writeBytes(bytes)
+                    true
+                } catch (ex: Exception) {
+                    false
+                }
+
+            override fun privateFilePath(relPath: String): String =
+                File(appContext.filesDir, relPath).absolutePath
+
+            override fun exists(relPath: String): Boolean =
+                File(appContext.filesDir, relPath).exists()
+
+            override fun setExecutable(relPath: String): Boolean =
+                File(appContext.filesDir, relPath).setExecutable(true)
         }
-        LaunchedEffect(session?.running, session?.exitCode) {
-            val done = session != null && !session!!.running
-            if (done && session?.node?.autoOff == true) {
-                delay(600)
-                logVisible = false
-            }
+
+        val extractorImpl = com.projectkr.krscript.core.runtime.DefaultAssetExtractor(assets, files)
+        extractor = extractorImpl
+        assetSource = assets
+        fileStore = files
+        scriptEnv = ScriptEnvironment(shell, assets, files, extractorImpl)
+
+        // kr-script.conf drives executor/toolkit selection; fall back to defaults.
+        val conf = runCatching {
+            appContext.assets.open("kr-script.conf").bufferedReader().readText()
+        }.getOrNull().orEmpty()
+
+        val confMap = com.projectkr.krscript.core.config.ConfReader().parse(conf)
+
+        allowHomePage = confMap.getOrDefault(
+            com.projectkr.krscript.core.config.ConfReader.ALLOW_HOME_PAGE,
+            com.projectkr.krscript.core.config.ConfReader.ALLOW_HOME_PAGE_DEFAULT,
+        ) == "1"
+
+        val toolkitDir = confMap[com.projectkr.krscript.core.config.ConfReader.TOOLKIT_DIR]
+        val variables = buildVariables().toMutableMap()
+        // TOOLKIT points at the extracted toolkit dir (original ScriptEnvironmen).
+        if (!toolkitDir.isNullOrEmpty()) {
+            variables["TOOLKIT"] = extractor.getExtractPath(toolkitDir)
         }
-        LogDialog(
-            session = session,
-            show = logVisible,
-            onClose = {
-                logVisible = false
-                session = null
-            },
+        // MAGISK_PATH: probe the well-known module roots through root shell.
+        variables["MAGISK_PATH"] = detectMagiskPath()
+
+        val ok = scriptEnv.init(
+            executorRef = confMap.getOrDefault(
+                com.projectkr.krscript.core.config.ConfReader.EXECUTOR_CORE,
+                "file:///android_asset/kr-script/executor.sh",
+            ),
+            toolkitDir = toolkitDir,
+            variables = variables,
         )
 
-        PowerMenuDialog(
-            show = powerMenu,
-            rooted = rooted,
-            onDismiss = { powerMenu = false },
-            onStartAction = { action ->
-                val node = RunnableNode("").apply {
-                    this.title = action.label
-                    this.setState = action.command
-                }
-                scope.launch {
-                    val psession = withContext(Dispatchers.IO) {
-                        ScriptActions.stream(node, node.setState.orEmpty())
-                    }
-                    session = psession
-                }
-            },
-        )
+        // before_start_sh runs once after the engine is ready (original key).
+        confMap[com.projectkr.krscript.core.config.ConfReader.BEFORE_START_SH]
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { scriptEnv.executeResult(it, null) }
+
+        initialized = ok
+        isReady = ok
+        return ok
     }
-}
 
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        fontSize = 15.sp,
-        modifier = Modifier.padding(bottom = 8.dp),
-    )
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(label, fontSize = 13.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-        Text(value, fontSize = 13.sp)
+    /**
+     * Root retry (original CheckRootStatus 重试): tears down the current shell
+     * and rebuilds the runtime so a user-initiated su grant can be picked up.
+     */
+    fun retry(): Boolean {
+        initialized = false
+        if (this::shell.isInitialized) shell.tryExit()
+        return init(appContext)
     }
-}
 
-private fun fmt(bytes: Long): String = when {
-    bytes >= (1L shl 30) -> String.format("%.1f GB", bytes / 1073741824f)
-    bytes >= (1L shl 20) -> String.format("%.0f MB", bytes / 1048576f)
-    else -> "$bytes B"
+    /** Probes Magisk module roots (values from the original MagiskExtend). */
+    private fun detectMagiskPath(): String {
+        for (path in listOf("/data/adb/modules", "/sbin/.core/img")) {
+            val check = shell.execute("[[ -d '$path' ]] && echo 1 || echo 0")
+            if (check.trim() == "1") {
+                return path.trimEnd('/')
+            }
+        }
+        return ""
+    }
+
+    /**
+     * Environment variables substituted into executor.sh — the same contract as
+     * the original ScriptEnvironmen.
+     */
+    private fun buildVariables(): Map<String, String> {
+        val pm = appContext.packageManager
+        val packageInfo = runCatching {
+            pm.getPackageInfo(appContext.packageName, 0)
+        }.getOrNull()
+
+        val map = LinkedHashMap<String, String>()
+        // TOOLKIT / MAGISK_PATH are filled by init() after extraction/probing.
+        map["TOOLKIT"] = ""
+        map["MAGISK_PATH"] = ""
+        map["START_DIR"] = appContext.filesDir.absolutePath.trimEnd('/')
+        map["TEMP_DIR"] = appContext.cacheDir.absolutePath
+        // Original FileOwner semantics: serial of the current user handle and
+        // the u<serial>_a<appId> owner string used by chown/pm --user.
+        val userSerial = runCatching {
+            val um = appContext.getSystemService(Context.USER_SERVICE) as android.os.UserManager
+            um.getSerialNumberForUser(android.os.Process.myUserHandle())
+        }.getOrDefault(0L)
+        map["ANDROID_UID"] = userSerial.toString()
+        map["APP_USER_ID"] = runCatching {
+            val appId = android.os.Process.myUid() % 100000 - 10000
+            "u${userSerial}_a$appId"
+        }.getOrDefault("")
+        map["ANDROID_SDK"] = Build.VERSION.SDK_INT.toString()
+        map["ROOT_PERMISSION"] = rooted.toString()
+        map["SDCARD_PATH"] =
+            Environment.getExternalStorageDirectory()?.absolutePath ?: ""
+        val busybox = File(appContext.filesDir, "busybox")
+        map["BUSYBOX"] = if (busybox.exists()) busybox.absolutePath else "busybox"
+        map["PACKAGE_NAME"] = appContext.packageName
+        map["PACKAGE_VERSION_NAME"] = packageInfo?.versionName ?: ""
+        map["PACKAGE_VERSION_CODE"] = packageInfo?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                it.longVersionCode.toString()
+            } else {
+                @Suppress("DEPRECATION")
+                it.versionCode.toString()
+            }
+        } ?: ""
+        return map
+    }
 }
