@@ -23,6 +23,7 @@ import com.projectkr.krscript.core.model.RunnableNode
 import com.projectkr.shell.navigation.Route
 import com.projectkr.shell.runtime.ScriptActions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.DropdownEntry
 import top.yukonga.miuix.kmp.basic.DropdownItem
