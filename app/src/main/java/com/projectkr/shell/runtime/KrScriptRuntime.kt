@@ -48,6 +48,9 @@ object KrScriptRuntime {
     var allowHomePage by androidx.compose.runtime.mutableStateOf(true)
         private set
 
+    @Volatile
+    private var initialized = false
+
     /** Evaluator used by PageConfigReader while parsing configs (@string translated). */
     val evaluator = ScriptEvaluator { script, node ->
         ShellTranslation.resolveRow(appContext, scriptEnv.executeResult(script, node))
