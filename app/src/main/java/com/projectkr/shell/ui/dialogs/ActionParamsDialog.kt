@@ -68,6 +68,7 @@ private fun ActionParamsDialogContent(
     var pendingFileParam by remember { mutableStateOf<String?>(null) }
     // Color picker runs as a sibling OverlayDialog (dialogs must not nest).
     var colorPickParam by remember(node.index) { mutableStateOf<String?>(null) }
+    var appChooserFor by remember(node.index) { mutableStateOf<String?>(null) }
     val filePicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument(),
     ) { uri ->
@@ -183,6 +184,26 @@ private fun ActionParamsDialogContent(
         )
     }
 
+    // Sibling popup: installed-app chooser for app/packages params.
+    AppChooserDialog(
+        show = appChooserFor != null,
+        filterPackages = node.params
+            ?.firstOrNull { it.name.orEmpty() == appChooserFor }
+            ?.options?.mapNotNull { it.value },
+        multiple = node.params
+            ?.firstOrNull { it.name.orEmpty() == appChooserFor }
+            ?.multiple == true,
+        onPicked = { packages ->
+            val name = appChooserFor
+            if (name != null) {
+                val sep = node.params?.firstOrNull { it.name.orEmpty() == name }?.separator ?: "\n"
+                draft = draft + (name to packages.joinToString(sep))
+            }
+            appChooserFor = null
+        },
+        onDismiss = { appChooserFor = null },
+    )
+
     // Sibling popup: opening the picker keeps the params form composed below.
     ColorPickerDialog(
         show = colorPickParam != null,
@@ -276,6 +297,17 @@ private fun ParamField(
                     summary = param.desc?.ifEmpty { "已选 ${selectedSet.size} 项" },
                     entries = entries,
                     collapseOnSelection = false,
+                )
+            }
+        }
+        param.type == "app" || param.type == "packages" -> {
+            val isMulti = param.multiple || param.type == "packages"
+            TextButton(text = "选择应用", onClick = { appChooserFor = param.name.orEmpty() })
+            if (value.isNotEmpty()) {
+                Text(
+                    text = "当前：$value",
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
         }
