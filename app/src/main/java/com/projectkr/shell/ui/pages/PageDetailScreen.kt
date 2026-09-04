@@ -112,10 +112,30 @@ fun PageDetailScreen(
 
     fun handleMenuOption(option: PageMenuOption) {
         when (option.type) {
-            "refresh" -> reloadKey++
-            "finish" -> backStack.removeLastOrNull()
+            "refresh", "reload" -> reloadKey++
+            "finish", "exit", "close" -> backStack.removeLastOrNull()
             "file" -> pushIfAbsent(backStack, Route.FileSelector(startDir = "/"))
-            else -> controller.onRunnable(option, emptyMap())
+            else -> {
+                // Default: the page handler script receives $state/$menu_id,
+                // mirroring the original menuItemExecute contract.
+                if (page.pageHandlerSh.isNotEmpty()) {
+                    scope.launch(Dispatchers.IO) {
+                        ScriptActions.stream(
+                            node = option.apply {
+                                setState = page.pageHandlerSh
+                                title = option.title
+                            },
+                            script = page.pageHandlerSh,
+                            params = mapOf(
+                                "menu_id" to option.key,
+                                "state" to option.title,
+                            ),
+                        )
+                    }.let { }
+                } else {
+                    controller.onRunnable(option, emptyMap())
+                }
+            }
         }
     }
 

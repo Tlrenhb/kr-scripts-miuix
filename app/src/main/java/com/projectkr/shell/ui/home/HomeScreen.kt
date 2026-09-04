@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.projectkr.krscript.core.model.RunnableNode
+import com.projectkr.shell.runtime.KrScriptRuntime
 import com.projectkr.shell.runtime.ScriptActions
 import com.projectkr.shell.ui.dialogs.LogDialog
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +85,13 @@ fun HomeScreen(
     var batteryLevel by remember { mutableIntStateOf(-1) }
     var batteryTemp by remember { mutableStateOf(Float.NaN) }
     var coreFreqs by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var coreMins by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var coreMaxs by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var coreLoads by remember { mutableStateOf<List<Float>>(emptyList()) }
+    var swapUsed by remember { mutableLongStateOf(0L) }
+    var swapTotal by remember { mutableLongStateOf(0L) }
+    var gpuFreqKHz by remember { mutableLongStateOf(0L) }
+    var gpuLoad by remember { mutableIntStateOf(-1) }
     var floatSummary by remember {
         mutableStateOf(if (com.projectkr.shell.service.FloatMonitor.running) "运行中 · 点击停止" else "在桌面显示 CPU/RAM 悬浮窗")
     }
@@ -122,6 +130,17 @@ fun HomeScreen(
             memTotal = sample.memTotal
             batteryLevel = sample.level
             batteryTemp = sample.temp
+
+            val mm = withContext(Dispatchers.IO) { DeviceStats.cpuMinMax() }
+            coreMins = mm.first
+            coreMaxs = mm.second
+            coreLoads = withContext(Dispatchers.IO) { DeviceStats.perCoreLoad() }
+            val swap = withContext(Dispatchers.IO) { DeviceStats.swapInfo() }
+            swapUsed = swap.first
+            swapTotal = swap.second
+            val gpu = withContext(Dispatchers.IO) { DeviceStats.gpuInfo() }
+            gpuFreqKHz = gpu.first
+            gpuLoad = gpu.second
             delay(SAMPLE_INTERVAL_MS)
         }
     }
@@ -188,8 +207,47 @@ fun HomeScreen(
                                 .fillMaxWidth()
                                 .padding(top = 6.dp),
                         )
+                        if (swapTotal > 0) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Swap ${fmt(swapUsed)} / ${fmt(swapTotal)}",
+                                fontSize = 13.sp,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            )
+                        }
                         Spacer(Modifier.height(6.dp))
                         TrendChart(samples = memSamples.toList(), maxValue = 1f)
+                        if (rooted) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                top.yukonga.miuix.kmp.basic.TextButton(
+                                    text = "清理内存",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = {
+                                        scope.launch(Dispatchers.IO) {
+                                            KrScriptRuntime.shell.execute(
+                                                "sync\necho 3 > /proc/sys/vm/drop_caches\necho 1 > /proc/sys/vm/compact_memory",
+                                            )
+                                        }
+                                    },
+                                )
+                                top.yukonga.miuix.kmp.basic.TextButton(
+                                    text = "清理 Swap",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = {
+                                        scope.launch(Dispatchers.IO) {
+                                            KrScriptRuntime.shell.execute(
+                                                "sync\necho 1 > /proc/sys/vm/compact_memory",
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -208,16 +266,45 @@ fun HomeScreen(
                             Text("(暂无数据)", fontSize = 13.sp)
                         } else {
                             coreFreqs.forEachIndexed { index, freq ->
+                                val load = coreLoads.getOrNull(index) ?: -1f
+                                val minMhz = coreMins.getOrNull(index)?.div(1000) ?: 0
+                                val maxMhz = coreMaxs.getOrNull(index)?.div(1000) ?: 0
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(vertical = 2.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                 ) {
-                                    Text("CPU $index", fontSize = 13.sp)
-                                    Text(if (freq > 0) "${freq / 1000} MHz" else "-", fontSize = 13.sp)
+                                    Text(
+                                        "CPU $index" + if (load >= 0) " · ${(load * 100).toInt()}%" else "",
+                                        fontSize = 13.sp,
+                                    )
+                                    Text(
+                                        when {
+                                            freq <= 0 -> "-"
+                                            minMhz > 0 && maxMhz > 0 -> "${freq / 1000} MHz ($minMhz~$maxMhz)"
+                                            else -> "${freq / 1000} MHz"
+                                        },
+                                        fontSize = 13.sp,
+                                    )
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            item {
+                if (gpuFreqKHz > 0) {
+                    Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            SectionTitle(
+                                "GPU" + if (gpuLoad >= 0) " · $gpuLoad%" else "",
+                            )
+                            Text(
+                                "${gpuFreqKHz / 1000000.0} MHz",
+                                fontSize = 13.sp,
+                            )
                         }
                     }
                 }

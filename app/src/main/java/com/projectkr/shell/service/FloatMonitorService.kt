@@ -40,7 +40,9 @@ class FloatMonitorService : Service() {
             }
             val (used, total) = readMemory()
             push(memSamples, if (total > 0) used.toFloat() / total else 0f)
-            floatView?.post { floatView?.invalidate() }
+            floatView?.post {
+                floatView?.invalidate()
+            }
             handler?.postDelayed(this, INTERVAL_MS)
         }
     }
@@ -55,6 +57,20 @@ class FloatMonitorService : Service() {
             onClose = { stopSelf() }
             serviceSeriesCpu = { cpuSamples.toList() }
             serviceSeriesMem = { memSamples.toList() }
+            readout = {
+                val freq = readCpuUsage().let { "" } // freq read below
+                val maxFreqMhz = readMaxFreqMhz()
+                val gpuMhz = readLong("/sys/class/kgsl/kgsl-3d0/gpuclk") / 1000
+                val lvl = readBatteryLevel()
+                val tmp = readBatteryTempC()
+                buildString {
+                    append("CPU")
+                    if (maxFreqMhz > 0) append(" ${maxFreqMhz}MHz")
+                    if (gpuMhz > 0) append(" · GPU ${gpuMhz}MHz")
+                    if (lvl >= 0) append(" · 电池 $lvl%")
+                    if (!tmp.isNaN()) append(" · ${"%.1f".format(tmp)}℃")
+                }
+            }
         }
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -92,7 +108,7 @@ class FloatMonitorService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     companion object {
-        private const val INTERVAL_MS = 1500L
+        private const val INTERVAL_MS = 1000L
         private const val MAX_SAMPLES = 40
 
         private fun push(queue: ArrayDeque<Float>, value: Float) {
@@ -110,6 +126,30 @@ class FloatMonitorService : Service() {
         } catch (ex: Exception) {
             -1f
         }
+
+        internal fun readMaxFreqMhz(): Int {
+            var max = 0L
+            for (core in 0 until Runtime.getRuntime().availableProcessors()) {
+                val v = runCatching {
+                    java.io.File("/sys/devices/system/cpu/cpu$core/cpufreq/cpuinfo_cur_freq")
+                        .readText().trim().toLong()
+                }.getOrDefault(0L)
+                if (v > max) max = v
+            }
+            return (max / 1000).toInt()
+        }
+
+        internal fun readBatteryLevel(): Int = runCatching {
+            java.io.File("/sys/class/power_supply/battery/capacity").readText().trim().toInt()
+        }.getOrDefault(-1)
+
+        internal fun readBatteryTempC(): Float = runCatching {
+            java.io.File("/sys/class/power_supply/battery/temp").readText().trim().toFloat() / 10f
+        }.getOrDefault(Float.NaN)
+
+        internal fun readLong(path: String): Long = runCatching {
+            java.io.File(path).readText().trim().toLong()
+        }.getOrDefault(0L)
 
         internal fun readMemory(): Pair<Long, Long> {
             var total = 0L
@@ -140,6 +180,9 @@ internal class MonitorFloatView(context: android.content.Context) :
     View(context) {
 
     var onClose: (() -> Unit)? = null
+
+    /** Textual readouts updated by the service sampler. */
+    var readout: (() -> String) = { "" }
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.argb(200, 20, 20, 24)
@@ -177,7 +220,7 @@ internal class MonitorFloatView(context: android.content.Context) :
         drawSeries(canvas, serviceSeriesCpu, chartTop, chartBottom, w, linePaint, "CPU")
         drawSeries(canvas, serviceSeriesMem, chartTop, chartBottom, w, memPaint, "RAM")
 
-        canvas.drawText("CPU/RAM", 20f, 38f, textPaint)
+        canvas.drawText(readout(), 20f, 38f, textPaint)
 
         if (showClose) {
             val r = 30f
