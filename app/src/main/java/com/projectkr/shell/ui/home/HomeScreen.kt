@@ -3,7 +3,9 @@
 
 package com.projectkr.shell.ui.home
 
+import android.app.Activity
 import android.os.Build
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -148,6 +150,50 @@ fun HomeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var powerMenu by remember { mutableStateOf(false) }
+
+    // Original CheckRootStatus: a non-dismissable retry/skip gate on first entry.
+    var showRootGuide by remember {
+        mutableStateOf(com.projectkr.shell.runtime.KrScriptRuntime.isReady &&
+            !com.projectkr.shell.runtime.KrScriptRuntime.rooted)
+    }
+    if (showRootGuide && !rooted) {
+        top.yukonga.miuix.kmp.overlay.OverlayDialog(
+            title = "未检测到 ROOT 权限",
+            summary = "本应用的功能大多需要 ROOT。你可以重试授权、跳过继续使用非 ROOT 功能，或退出应用。",
+            show = true,
+            onDismissRequest = { showRootGuide = false },
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                top.yukonga.miuix.kmp.basic.TextButton(
+                    text = "重试",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        showRootGuide = false
+                        Thread {
+                            val ok = com.projectkr.shell.runtime.KrScriptRuntime.retry()
+                            if (ok && com.projectkr.shell.runtime.KrScriptRuntime.rooted) {
+                                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "ROOT 已授权", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }.start()
+                    },
+                )
+                top.yukonga.miuix.kmp.basic.TextButton(
+                    text = "跳过",
+                    modifier = Modifier.weight(1f),
+                    onClick = { showRootGuide = false },
+                )
+                top.yukonga.miuix.kmp.basic.TextButton(
+                    text = "退出",
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        (context as? Activity)?.finishAffinity()
+                    },
+                )
+            }
+        }
+    }
     var session by remember { mutableStateOf<ScriptActions.Session?>(null) }
 
     val scrollBehavior = MiuixScrollBehavior()

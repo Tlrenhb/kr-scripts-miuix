@@ -57,7 +57,7 @@ object KrScriptRuntime {
         private set
 
     fun init(context: Context): Boolean {
-        if (this::scriptEnv.isInitialized) return true
+        if (initialized) return true
         appContext = context.applicationContext
 
         shell = KeepShellRunner.createWithFallback()
@@ -142,8 +142,19 @@ object KrScriptRuntime {
             ?.takeIf { it.isNotEmpty() }
             ?.let { scriptEnv.executeResult(it, null) }
 
+        initialized = ok
         isReady = ok
         return ok
+    }
+
+    /**
+     * Root retry (original CheckRootStatus 重试): tears down the current shell
+     * and rebuilds the runtime so a user-initiated su grant can be picked up.
+     */
+    fun retry(): Boolean {
+        initialized = false
+        if (this::shell.isInitialized) shell.tryExit()
+        return init(appContext)
     }
 
     /** Probes Magisk module roots (values from the original MagiskExtend). */
