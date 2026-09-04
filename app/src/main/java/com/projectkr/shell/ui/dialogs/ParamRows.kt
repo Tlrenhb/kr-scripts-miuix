@@ -31,32 +31,35 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
 /**
- * Hex color parameter: swatch preview + pick entry. The picker itself is a
- * sibling OverlayDialog owned by the params screen (dialogs must not nest).
+ * Hex color parameter: swatch preview + editable hex entry + picker entry.
+ * Original ParamsColorPicker accepted manual #RGB/#ARGB/#RRGGBB/#AARRGGBB.
  */
 @Composable
 fun ColorParamRow(
     title: String,
     value: String,
     onRequestPick: () -> Unit,
+    onValueChange: (String) -> Unit,
 ) {
+    Text(text = title, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = title)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = value.ifEmpty { "#" })
-            Box(
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .size(24.dp)
-                    .background(parseColorSafe(value)),
-            )
-        }
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .background(parseColorSafe(value)),
+        )
+        TextField(
+            label = "#RRGGBB",
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.weight(1f),
+        )
     }
     TextButton(text = "选择颜色", onClick = onRequestPick)
 }

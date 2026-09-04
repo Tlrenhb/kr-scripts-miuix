@@ -21,6 +21,8 @@
         android:maxSdkVersion="32" />
     <!-- Background task completion notifications (Android 13+). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- ShortcutManagerCompat falls back to this protected broadcast below O. -->
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
     <!-- Root tool: browse/edit arbitrary files (special access, granted via
          Settings; scripts also bypass through su). -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"

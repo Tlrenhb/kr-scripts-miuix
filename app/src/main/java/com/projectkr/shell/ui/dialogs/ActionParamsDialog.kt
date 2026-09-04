@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.projectkr.krscript.core.config.PageConfigReader
 import com.projectkr.krscript.core.model.ActionNode
 import com.projectkr.krscript.core.model.ActionParamInfo
 import com.projectkr.krscript.core.model.SelectItem
@@ -158,15 +159,20 @@ private fun ActionParamsDialogContent(
             text = "确定",
             onClick = {
                 // Original readParamsValue: required params block submission.
-                val missing = node.params
-                    ?.filter { it.required == true }
-                    ?.filter { draft[it.name.orEmpty()].isNullOrEmpty() }
-                    ?.mapNotNull { it.title ?: it.label ?: it.name }
-                if (missing.isNullOrEmpty()) {
+                val badColor = node.params
+                    ?.filter { it.type == "color" }
+                    ?.firstOrNull { param ->
+                        val v = draft[param.name.orEmpty()].orEmpty()
+                        v.isNotEmpty() && runCatching {
+                            PageConfigReader.parseColor(v)
+                        }.isFailure
+                    }
+                val error = validateDraft(node, draft)
+                if (error == null) {
                     onSubmit(draft)
                     onDismiss()
                 } else {
-                    errorHint = "必填项未填写：${missing.joinToString("、")}"
+                    errorHint = error
                 }
             },
             modifier = Modifier
@@ -276,6 +282,7 @@ private fun ParamField(
                 title = title,
                 value = value,
                 onRequestPick = onPickColor,
+                onValueChange = onValueChange,
             )
         }
         param.type == "file" -> {
@@ -310,3 +317,24 @@ internal fun copyUriToCache(context: Context, uri: android.net.Uri, paramName: S
         } ?: return null
         out.absolutePath
     }.getOrNull()
+
+/** Submit-time validation (original readParamsValue rules, non-throwing). */
+internal fun validateDraft(node: ActionNode, draft: Map<String, String>): String? {
+    val badColor = node.params
+        ?.filter { it.type == "color" }
+        ?.firstOrNull { param ->
+            val v = draft[param.name.orEmpty()].orEmpty()
+            v.isNotEmpty() && runCatching { PageConfigReader.parseColor(v) }.isFailure
+        }
+    if (badColor != null) {
+        return "颜色格式无效：${badColor.title ?: badColor.name}（示例 #FF5722）"
+    }
+    val missing = node.params
+        ?.filter { it.required == true }
+        ?.filter { draft[it.name.orEmpty()].isNullOrEmpty() }
+        ?.mapNotNull { it.title ?: it.label ?: it.name }
+    if (!missing.isNullOrEmpty()) {
+        return "必填项未填写：${missing.joinToString("、")}"
+    }
+    return null
+}
