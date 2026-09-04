@@ -88,7 +88,7 @@ val content = rememberPageContent(reloadKey) {
                                         onClick = {
                                             if (com.projectkr.shell.shortcut.ShortcutHelper.pinPageShortcut(
                                                     context, node.currentPageConfigPath, node.title,
-                                                    node = node,
+                                                    node = node as? com.projectkr.krscript.core.model.ClickableNode,
                                                 )
                                             ) {
                                                 content.scope.launch {
