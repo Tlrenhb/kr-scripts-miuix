@@ -135,7 +135,9 @@ private fun ActionParamsDialogContent(
                 onPickColor = { colorPickParam = param.name.orEmpty() },
                 onPickClick = {
                     pendingFileParam = param.name.orEmpty()
-                    filePicker.launch(arrayOf("*/*"))
+                    // SAF mime filter from the suffix mapping when available.
+                    val mime = param.mime.ifEmpty { "*/*" }
+                    filePicker.launch(arrayOf(mime))
                 },
                 onValueChange = { newValue ->
                     draft = draft + ((param.name.orEmpty()) to newValue)

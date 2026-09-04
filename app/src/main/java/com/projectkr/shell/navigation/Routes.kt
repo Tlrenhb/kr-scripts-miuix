@@ -40,5 +40,11 @@ sealed interface Route : NavKey {
 
     /** Custom file selector rooted at [startDir]. */
     @Serializable
-    data class FileSelector(val startDir: String) : Route
+    data class FileSelector(
+        val startDir: String,
+        /** When set, only files with this suffix are selectable. */
+        val extension: String = "",
+        /** Folder mode: directories become selectable results. */
+        val folderMode: Boolean = false,
+    ) : Route
 }

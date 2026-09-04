@@ -115,7 +115,13 @@ fun PageDetailScreen(
         when (option.type) {
             "refresh", "reload" -> reloadKey++
             "finish", "exit", "close" -> backStack.removeLastOrNull()
-            "file" -> pushIfAbsent(backStack, Route.FileSelector(startDir = "/"))
+            "file" -> pushIfAbsent(
+                    backStack,
+                    Route.FileSelector(
+                        startDir = "/",
+                        extension = option.suffix,
+                    ),
+                )
             else -> {
                 // Default: the page handler script receives $state/$menu_id,
                 // mirroring the original menuItemExecute contract.

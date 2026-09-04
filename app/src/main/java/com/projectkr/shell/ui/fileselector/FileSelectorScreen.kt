@@ -84,6 +84,8 @@ internal fun listDir(dir: String): List<DirEntry> {
 @Composable
 fun FileSelectorScreen(
     startDir: String,
+    extension: String = "",
+    folderMode: Boolean = false,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
