@@ -195,15 +195,15 @@ internal class FloatMonitorView(context: Context) : View(context) {
         cpuMhz: Int, gpuMhz: Int, ramGb: Int,
         tempC: Float,
     ) {
-        cpuLoadP = cpuP
-        gpuLoadP = gpuP
-        ramLoadP = ramP
-        batteryP = batP
-        cpuMhz = cpuMhz
-        gpuMhz = gpuMhz
-        ramGb = ramGb
-        batteryLevel = batP
-        batteryTempC = tempC
+        this.cpuLoadP = cpuP
+        this.gpuLoadP = gpuP
+        this.ramLoadP = ramP
+        this.batteryP = batP
+        this.cpuMhz = cpuMhz
+        this.gpuMhz = gpuMhz
+        this.ramGb = ramGb
+        this.batteryLevel = batP
+        this.batteryTempC = tempC
         invalidate()
     }
 
