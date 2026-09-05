@@ -3,19 +3,17 @@
 
 package com.projectkr.shell.ui.home
 
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 
-/** Power operations from the original DialogPower. */
 /** Commands are the exact strings from the original strings.xml power_*_cmd. */
 enum class PowerAction(val label: String, val command: String) {
     REBOOT("重启", "sync;svc power reboot || reboot;"),
@@ -27,61 +25,44 @@ enum class PowerAction(val label: String, val command: String) {
 }
 
 /**
- * Power menu dialog — a dedicated streaming session per action so the user can
- * watch the (usually silent) command and interrupt if needed.
+ * Page-scoped confirmation for the power action selected from the app-bar
+ * popup. Keeping the popup and confirmation separate avoids stacked overlays
+ * fighting for focus or predictive back handling.
  */
 @Composable
-fun PowerMenuDialog(
-    show: Boolean,
-    rooted: Boolean,
+fun PowerActionConfirmDialog(
+    action: PowerAction?,
     onStartAction: (PowerAction) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var confirmAction by remember { mutableStateOf<PowerAction?>(null) }
+    // Keep the selected value while the OverlayDialog exit animation plays.
+    var retainedAction by remember { mutableStateOf<PowerAction?>(null) }
+    action?.let { retainedAction = it }
+    val confirmedAction = retainedAction ?: return
 
     OverlayDialog(
-        title = "电源菜单",
-        summary = if (rooted) null else "需要 ROOT 权限",
-        show = show,
+        title = confirmedAction.label,
+        summary = "确定执行「${confirmedAction.label}」吗？",
+        show = action != null,
         onDismissRequest = onDismiss,
+        onDismissFinished = {
+            if (action == null) retainedAction = null
+        },
     ) {
-        PowerAction.entries.forEach { action ->
+        Row(Modifier.fillMaxWidth()) {
             TextButton(
-                text = action.label,
-                onClick = { confirmAction = action },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
+                text = "取消",
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f),
             )
-        }
-    }
-
-    // Retain the action while the hide animation plays; `show` tracks state.
-    var lastAction by remember { mutableStateOf<PowerAction?>(null) }
-    confirmAction?.let { lastAction = it }
-    lastAction?.let { action ->
-        OverlayDialog(
-            title = action.label,
-            summary = "确定执行「${action.label}」吗？",
-            show = confirmAction != null,
-            onDismissRequest = { confirmAction = null },
-        ) {
-            androidx.compose.foundation.layout.Row {
-                TextButton(
-                    text = "取消",
-                    onClick = { confirmAction = null },
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(
-                    text = "确定",
-                    onClick = {
-                        confirmAction = null
-                        onDismiss()
-                        onStartAction(action)
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            TextButton(
+                text = "确定",
+                onClick = {
+                    onDismiss()
+                    onStartAction(confirmedAction)
+                },
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

@@ -45,6 +45,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.DropdownEntry
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
@@ -59,6 +61,7 @@ import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import top.yukonga.miuix.kmp.icon.extended.Stopwatch
 import top.yukonga.miuix.kmp.icon.extended.Unlock
+import top.yukonga.miuix.kmp.icon.extended.More
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -148,7 +151,9 @@ fun HomeScreen(
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var powerMenu by remember { mutableStateOf(false) }
+    // The toolbar menu owns its expanded state; only the chosen destructive
+    // operation is hoisted for the page-scoped confirmation dialog.
+    var pendingPowerAction by remember { mutableStateOf<PowerAction?>(null) }
 
     // Original CheckRootStatus: a non-dismissable retry/skip gate on first entry.
     var showRootGuide by remember {
@@ -208,11 +213,23 @@ fun HomeScreen(
                         icon = MiuixIcons.Stopwatch,
                         onClick = onOpenMonitor,
                     )
-                    com.projectkr.shell.ui.common.HintedAction(
-                        text = "电源菜单",
-                        icon = MiuixIcons.Reset,
-                        onClick = { powerMenu = true },
-                    )
+                    // KernelSU-style anchored toolbar menu. The built-in
+                    // wrapper owns hold-down feedback and popup dismissal.
+                    top.yukonga.miuix.kmp.menu.OverlayIconDropdownMenu(
+                        entry = DropdownEntry(
+                            items = PowerAction.entries.map { action ->
+                                DropdownItem(
+                                    text = action.label,
+                                    onClick = { pendingPowerAction = action },
+                                )
+                            },
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = MiuixIcons.Reset,
+                            contentDescription = "电源菜单",
+                        )
+                    }
                 },
             )
         },
@@ -488,20 +505,18 @@ fun HomeScreen(
             },
         )
 
-        PowerMenuDialog(
-            show = powerMenu,
-            rooted = rooted,
-            onDismiss = { powerMenu = false },
+        PowerActionConfirmDialog(
+            action = pendingPowerAction,
+            onDismiss = { pendingPowerAction = null },
             onStartAction = { action ->
                 val node = RunnableNode("").apply {
-                    this.title = action.label
-                    this.setState = action.command
+                    title = action.label
+                    setState = action.command
                 }
                 scope.launch {
-                    val psession = withContext(Dispatchers.IO) {
+                    session = withContext(Dispatchers.IO) {
                         ScriptActions.stream(node, node.setState.orEmpty())
                     }
-                    session = psession
                 }
             },
         )

@@ -23,8 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.projectkr.krscript.core.model.GroupNode
 import com.projectkr.krscript.core.model.NodeInfoBase
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.PullToRefresh
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TopAppBar
@@ -73,9 +73,19 @@ fun PagesScreen(
                 scrollBehavior = scrollBehavior,
                 actions = {
                     com.projectkr.shell.ui.common.HintedAction(
-                        text = "搜索",
+                        text = if (searching) "关闭搜索" else "搜索",
                         icon = MiuixIcons.Search,
-                        onClick = { searching = !searching },
+                        onClick = {
+                            if (searching) {
+                                searching = false
+                                searchExpanded = false
+                                searchQuery = ""
+                            } else {
+                                searching = true
+                                // InputField requests focus when expanded, bringing up IME.
+                                searchExpanded = true
+                            }
+                        },
                     )
                     com.projectkr.shell.ui.common.HintedAction(
                         text = "重新加载",
@@ -93,15 +103,40 @@ fun PagesScreen(
                         InputField(
                             query = searchQuery,
                             onQueryChange = { searchQuery = it },
-                            onSearch = { searchExpanded = false },
+                            // The filtered list below is the result surface, so keep
+                            // the field open after IME search rather than clearing it.
+                            onSearch = { },
                             expanded = searchExpanded,
-                            onExpandedChange = { searchExpanded = it },
+                            onExpandedChange = { expanded ->
+                                searchExpanded = expanded
+                                if (!expanded) {
+                                    searching = false
+                                    searchQuery = ""
+                                }
+                            },
                             label = "搜索功能",
                         )
                     },
                     expanded = searchExpanded,
-                    onExpandedChange = { searchExpanded = it },
+                    onExpandedChange = { expanded ->
+                        searchExpanded = expanded
+                        if (!expanded) {
+                            searching = false
+                            searchQuery = ""
+                        }
+                    },
+                    outsideEndAction = {
+                        TextButton(
+                            text = "取消",
+                            onClick = {
+                                searchExpanded = false
+                                searching = false
+                                searchQuery = ""
+                            },
+                        )
+                    },
                 ) {
+                    // Results stay in the existing virtualized NodeScreenBody below.
                 }
             }
             PullToRefresh(
