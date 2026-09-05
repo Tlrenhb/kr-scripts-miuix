@@ -17,7 +17,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.projectkr.shell.ui.pages.FilePickerResult
 import com.projectkr.shell.runtime.KrScriptRuntime
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +33,10 @@ import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.overScrollVertical
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 
 /** One row of the directory listing. */
 data class DirEntry(val path: String, val name: String, val isDirectory: Boolean)
@@ -91,6 +93,23 @@ fun FileSelectorScreen(
 ) {
     var currentDir by rememberSaveable { mutableStateOf(startDir.ifEmpty { "/" }) }
     var entries by remember(currentDir) { mutableStateOf<List<DirEntry>?>(null) }
+    val normalizedExtension = remember(extension) {
+        extension.trim()
+            .takeUnless { it == "*" || it == "*.*" }
+            ?.removePrefix("*.")
+            ?.removePrefix("*")
+            ?.removePrefix(".")
+            ?.lowercase()
+            .orEmpty()
+    }
+    val pickerTitle = if (folderMode) "选择文件夹" else "选择文件"
+    val displayedEntries = entries?.filter { entry ->
+        when {
+            folderMode -> entry.isDirectory
+            entry.isDirectory || normalizedExtension.isEmpty() -> true
+            else -> entry.name.lowercase().endsWith(".$normalizedExtension")
+        }
+    }
 
     LaunchedEffect(currentDir) {
         entries = withContext(Dispatchers.IO) { listDir(currentDir) }
@@ -114,7 +133,7 @@ fun FileSelectorScreen(
         topBar = {
             Column {
                 SmallTopAppBar(
-                    title = "选择文件",
+                    title = pickerTitle,
                     navigationIcon = {
                         IconButton(onClick = {
                             // Back goes up one directory; at the root it exits.
@@ -126,6 +145,18 @@ fun FileSelectorScreen(
                             }
                         }) {
                             Icon(MiuixIcons.Back, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        if (folderMode) {
+                            com.projectkr.shell.ui.common.HintedAction(
+                                text = "选择当前目录",
+                                icon = MiuixIcons.Ok,
+                                onClick = {
+                                    FilePickerResult.pendingPath = currentDir
+                                    onBack()
+                                },
+                            )
                         }
                     },
                 )
@@ -142,21 +173,35 @@ fun FileSelectorScreen(
         },
     ) { inner ->
         Column(modifier = Modifier.padding(inner)) {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                val list = entries
-                if (list == null) {
-                    item { LoadingHint() }
-                } else if (list.isEmpty()) {
-                    item { LoadingHint("(空目录或不可读)") }
-                } else {
-                    items(list.size) { index ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scrollEndHaptic()
+                    .overScrollVertical(),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 12.dp),
+            ) {
+                val list = displayedEntries
+                when {
+                    list == null -> item { LoadingHint("正在读取目录…") }
+                    list.isEmpty() && normalizedExtension.isNotEmpty() -> {
+                        item { LoadingHint("当前目录没有 .$normalizedExtension 文件") }
+                    }
+                    list.isEmpty() -> item { LoadingHint("空目录或不可读") }
+                    else -> items(list.size, key = { index -> list[index].path }) { index ->
                         val entry = list[index]
                         Card(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            modifier = Modifier
+                                .padding(horizontal = 12.dp)
+                                .padding(top = 4.dp),
                         ) {
                             BasicComponent(
                                 title = entry.name + if (entry.isDirectory) "/" else "",
-                                summary = if (entry.isDirectory) "目录" else null,
+                                summary = when {
+                                    entry.isDirectory && folderMode -> "目录 · 进入后可选择"
+                                    entry.isDirectory -> "目录"
+                                    normalizedExtension.isNotEmpty() -> ".${normalizedExtension} 文件"
+                                    else -> null
+                                },
                                 onClick = {
                                     if (entry.isDirectory) {
                                         currentDir = entry.path
@@ -178,7 +223,7 @@ fun FileSelectorScreen(
 private fun LoadingHint(text: String = "(加载中…)") {
     Text(
         text = text,
-        fontSize = 13.sp,
+        style = MiuixTheme.textStyles.footnote1,
         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
         modifier = Modifier
             .fillMaxWidth()

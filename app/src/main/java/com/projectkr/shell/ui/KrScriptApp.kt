@@ -146,6 +146,8 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
             ) { route ->
                 FileSelectorScreen(
                     startDir = route.startDir,
+                    extension = route.extension,
+                    folderMode = route.folderMode,
                     onBack = onBack,
                 )
             }

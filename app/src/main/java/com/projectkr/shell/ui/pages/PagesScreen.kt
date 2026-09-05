@@ -96,7 +96,11 @@ fun PagesScreen(
             )
         },
     ) { inner ->
-        Column(modifier = Modifier.padding(inner)) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(inner),
+        ) {
             AnimatedVisibility(visible = searching) {
                 SearchBar(
                     inputField = {

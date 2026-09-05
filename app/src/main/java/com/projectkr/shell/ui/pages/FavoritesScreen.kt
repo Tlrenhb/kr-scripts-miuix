@@ -53,11 +53,16 @@ fun FavoritesScreen(
     var refreshing by remember { mutableStateOf(false) }
     val store = remember { FavoritesStore(context) }
 
-val content = rememberPageContent(reloadKey) {
+    val content = rememberPageContent(reloadKey) {
         // 1. favorite_config XML — the original favorites tab content.
         val base = PageLoader.loadSubPage(PageLoader.favoritesPage()) ?: emptyList()
         // 2. Starred items (this rewrite's enhancement) appended after.
         base + loadFavoriteNodes(context)
+    }
+    // PullToRefresh consumes scroll while this remains true, so finish the
+    // hoisted refresh state as soon as the async page-content load settles.
+    LaunchedEffect(content.loading) {
+        if (!content.loading) refreshing = false
     }
 
     val controller = remember(content.scope) {
