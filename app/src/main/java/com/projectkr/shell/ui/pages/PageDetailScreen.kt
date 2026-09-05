@@ -23,6 +23,7 @@ import com.projectkr.krscript.core.model.RunnableNode
 import com.projectkr.shell.navigation.Route
 import com.projectkr.shell.runtime.ScriptActions
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.DropdownEntry
@@ -126,17 +127,25 @@ fun PageDetailScreen(
                 )
             else -> {
                 // Default: the page handler script receives $state/$menu_id,
-                // mirroring the original menuItemExecute contract.
+                // mirroring the original menuItemExecute contract. The stream
+                // result routes through controller for LogDialog + completion.
                 if (page.pageHandlerSh.isNotEmpty()) {
                     content.scope.launch(Dispatchers.IO) {
-                        ScriptActions.stream(
+                        val session = ScriptActions.stream(
                             node = option,
                             script = page.pageHandlerSh,
                             params = mapOf(
                                 "menu_id" to option.key,
-                                "state" to option.title,
+                                "state" to option.key,
                             ),
                         )
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                            controller.activeSession = session
+                        }
+                        while (session.running) delay(500)
+                        kotlinx.coroutines.withContext(Dispatchers.Main) {
+                            controller.onSessionCompleted(session)
+                        }
                     }
                 } else {
                     controller.onRunnable(option, emptyMap())

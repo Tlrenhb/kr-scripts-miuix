@@ -391,6 +391,17 @@ internal fun copyUriToCache(context: Context, uri: android.net.Uri, paramName: S
 
 /** Submit-time validation (original readParamsValue rules, non-throwing). */
 internal fun validateDraft(node: ActionNode, draft: Map<String, String>): String? {
+    // Original readParamsValue: int/number out of range blocks submission.
+    val outOfRange = node.params
+        ?.filter { it.type == "int" || it.type == "number" }
+        ?.firstOrNull { param ->
+            val v = draft[param.name.orEmpty()]?.toFloatOrNull() ?: return@firstOrNull false
+            v < param.min || v > param.max
+        }
+    if (outOfRange != null) {
+        val label = outOfRange.title ?: outOfRange.name
+        return "数值超出范围：$label 需在 ${outOfRange.min} ~ ${outOfRange.max} 之间"
+    }
     val badColor = node.params
         ?.filter { it.type == "color" }
         ?.firstOrNull { param ->
