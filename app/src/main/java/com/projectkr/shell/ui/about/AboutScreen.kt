@@ -23,6 +23,7 @@ import com.projectkr.shell.ui.theme.KeyColorChoices
 import com.projectkr.shell.ui.theme.KrThemeConfig
 import com.projectkr.shell.ui.theme.PaletteStyleChoices
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
