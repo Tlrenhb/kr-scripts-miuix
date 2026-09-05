@@ -41,7 +41,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
-import top.yukonga.miuix.kmp.squircle.SquircleShape
+import top.yukonga.miuix.kmp.squircle.squircleClip
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -90,7 +90,7 @@ fun AboutScreen(
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .clip(SquircleShape(16.dp)),
+                            .squircleClip(16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text("K", fontSize = 32.sp)
@@ -167,7 +167,7 @@ fun AboutScreen(
                         summary = "Tlrenhb/kr-scripts-miuix",
                         startAction = {
                             Icon(
-                                imageVector = top.yukonga.miuix.kmp.icon.extended.Link,
+                                imageVector = MiuixIcons.Link,
                                 contentDescription = null,
                                 tint = MiuixTheme.colorScheme.onBackground,
                                 modifier = Modifier.padding(end = 16.dp),
@@ -186,7 +186,7 @@ fun AboutScreen(
                         summary = "compose-miuix-ui/miuix",
                         startAction = {
                             Icon(
-                                imageVector = top.yukonga.miuix.kmp.icon.extended.WorldClock,
+                                imageVector = MiuixIcons.WorldClock,
                                 contentDescription = null,
                                 tint = MiuixTheme.colorScheme.onBackground,
                                 modifier = Modifier.padding(end = 16.dp),
@@ -205,7 +205,7 @@ fun AboutScreen(
                         summary = "XML 配置格式说明",
                         startAction = {
                             Icon(
-                                imageVector = top.yukonga.miuix.kmp.icon.extended.File,
+                                imageVector = MiuixIcons.File,
                                 contentDescription = null,
                                 tint = MiuixTheme.colorScheme.onBackground,
                                 modifier = Modifier.padding(end = 16.dp),
