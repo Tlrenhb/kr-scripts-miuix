@@ -94,23 +94,6 @@ object PageLoader {
                     reader.readConfigXml()
                 }
             }
-                val extractor = DefaultAssetExtractor(runtime.assetSource, runtime.fileStore)
-                val locator = PathAnalysis(
-                    assets = runtime.assetSource,
-                    files = runtime.fileStore,
-                    shell = runtime.shell,
-                    extractor = extractor,
-                    parentDir = page.pageConfigDir,
-                )
-                val reader = PageConfigReader(
-                    evaluator = runtime.evaluator,
-                    locator = locator,
-                    extractor = extractor,
-                    pageConfigRef = ref,
-                    parentDir = page.pageConfigDir,
-                )
-                nodes = reader.readConfigXml()
-            }
         } catch (_: Exception) {
             nodes = null
         }
