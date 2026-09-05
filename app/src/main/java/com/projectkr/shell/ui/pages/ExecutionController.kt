@@ -204,6 +204,9 @@ class ExecutionController(
                 params = params,
             )
             while (session.running) delay(500)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                onSessionCompleted(session)
+            }
             // Original HiddenTaskThread never posted notifications — it toasted
             // collected errors only when the run failed.
             if (node.shell == RunnableNode.shellModeBgTask) {

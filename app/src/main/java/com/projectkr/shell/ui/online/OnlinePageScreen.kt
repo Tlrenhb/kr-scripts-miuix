@@ -239,9 +239,22 @@ private class JsBridgeImpl(
      * [script] runs in a dedicated process (original executeShellAsync).
      */
     @JavascriptInterface
-    fun executeShellAsync(script: String?, callbackFunction: String?): Boolean {
+    fun executeShellAsync(script: String?, callbackFunction: String?, env: String? = null): Boolean {
         if (!KrScriptRuntime.isReady || script.isNullOrEmpty() || callbackFunction.isNullOrEmpty()) {
             return false
+        }
+        // Original contract: third arg is a JSON-stringified params object.
+        val jsParams = mutableMapOf<String, String>()
+        try {
+            if (!env.isNullOrEmpty()) {
+                val obj = org.json.JSONObject(env)
+                val keys = obj.keys()
+                while (keys.hasNext()) {
+                    val k = keys.next()
+                    jsParams[k] = obj.optString(k)
+                }
+            }
+        } catch (_: Exception) {
         }
         fun emit(jsonBody: String) {
             webView.post {
@@ -256,7 +269,7 @@ private class JsBridgeImpl(
         val process = runner.execute(
             script = script,
             node = virtualRoot,
-            params = emptyMap(),
+            params = jsParams,
             tag = "web_" + System.currentTimeMillis(),
             // Original event constants: EVENT_REDE=2, EVENT_READ_ERROR=4,
             // EVENT_EXIT=-2 (ShellHandlerBase), message carries a trailing \n.

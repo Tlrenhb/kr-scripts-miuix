@@ -14,7 +14,6 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 
 class ScriptProcessRunnerTest {
 
