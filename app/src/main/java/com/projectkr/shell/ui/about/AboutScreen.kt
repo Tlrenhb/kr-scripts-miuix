@@ -120,6 +120,14 @@ fun AboutScreen(
                 ArrowPreference(
                     title = "GitHub 仓库",
                     summary = "Tlrenhb/kr-scripts-miuix",
+                    startAction = {
+                        Icon(
+                            imageVector = MiuixIcons.Link,
+                            contentDescription = null,
+                            tint = MiuixTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(end = 16.dp),
+                        )
+                    },
                     onClick = {
                         runCatching {
                             context.startActivity(
@@ -131,6 +139,14 @@ fun AboutScreen(
                 ArrowPreference(
                     title = "Miuix 组件库",
                     summary = "compose-miuix-ui/miuix",
+                    startAction = {
+                        Icon(
+                            imageVector = MiuixIcons.WorldClock,
+                            contentDescription = null,
+                            tint = MiuixTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(end = 16.dp),
+                        )
+                    },
                     onClick = {
                         runCatching {
                             context.startActivity(
@@ -142,6 +158,14 @@ fun AboutScreen(
                 ArrowPreference(
                     title = "KrScript 文档",
                     summary = "XML 配置格式说明",
+                    startAction = {
+                        Icon(
+                            imageVector = MiuixIcons.File,
+                            contentDescription = null,
+                            tint = MiuixTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(end = 16.dp),
+                        )
+                    },
                     onClick = {
                         runCatching {
                             context.startActivity(
