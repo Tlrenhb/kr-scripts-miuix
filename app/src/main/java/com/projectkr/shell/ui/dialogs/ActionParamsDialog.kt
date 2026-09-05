@@ -324,11 +324,46 @@ private fun ParamField(
         param.type == "file" -> {
             FileParamRow(param = param, value = value, onPickClick = onPickClick, onValueChange = onValueChange)
         }
+        param.type == "int" || param.type == "number" -> {
+            // Documented numeric inputs: numeric keyboard + min/max clamping.
+            val isInt = param.type == "int"
+            val current = value.toFloatOrNull()
+            val inRange = current == null ||
+                (current >= param.min && current <= param.max)
+            TextField(
+                label = buildString {
+                    append(title)
+                    if (param.min != Int.MIN_VALUE && param.max != Int.MAX_VALUE) {
+                        append(" (${param.min} ~ ${param.max})")
+                    } else if (param.placeholder.isNotEmpty()) {
+                        append(" · ${param.placeholder}")
+                    }
+                },
+                value = value,
+                onValueChange = { newValue ->
+                    val filtered = if (isInt) {
+                        newValue.filter { it.isDigit() || (it == '-' && newValue.indexOf('-') == 0) }
+                    } else {
+                        newValue.filter { it.isDigit() || it == '.' || (it == '-' && newValue.indexOf('-') == 0) }
+                    }
+                    onValueChange(filtered)
+                },
+                enabled = !param.readonly,
+            )
+            if (!inRange) {
+                Text(
+                    text = "数值需在 ${param.min} ~ ${param.max} 之间",
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+        }
         else -> {
             // text and unknown types fall back to a plain text field.
             TextField(
-                label = title + if (param.placeholder.isNotEmpty()) " · ${param.placeholder}" else "" +
-                    if (param.maxLength > 0) " (≤${param.maxLength})" else "",
+                label = title + (if (param.placeholder.isNotEmpty()) " · ${param.placeholder}" else "") +
+                    (if (param.maxLength > 0) " (≤${param.maxLength})" else ""),
                 value = value,
                 onValueChange = { newValue ->
                     onValueChange(

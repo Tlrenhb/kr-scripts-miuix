@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +51,20 @@ fun LogDialog(
     if (session != null) last = session
     val active = last ?: return
 
+    // progress:[current/total] protocol (docs/Extra.md): -1 total = loading.
+    var progressCurrent by remember { mutableIntStateOf(-2) }
+    var progressTotal by remember { mutableIntStateOf(-2) }
+    LaunchedEffect(active.lines.size) {
+        for (i in (active.lines.size - 1).coerceAtLeast(0) downTo 0) {
+            val m = Regex("progress:\\[(-?\\d+)/(\\d+)\\]").find(active.lines[i].text)
+            if (m != null) {
+                progressCurrent = m.groupValues[1].toInt()
+                progressTotal = m.groupValues[2].toInt()
+                return@LaunchedEffect
+            }
+        }
+    }
+
     val context = LocalContext.current
     OverlayDialog(
         title = active.node.title,
@@ -59,6 +74,19 @@ fun LogDialog(
         val scroll = rememberScrollState()
         LaunchedEffect(active.lines.size) {
             scroll.scrollTo(scroll.maxValue)
+        }
+
+        // progress:[current/total] drives an indicator; equal values hide it,
+        // current = -1 shows an indeterminate animation (docs/Extra.md).
+        val showDeterminate = progressTotal > 0 && progressCurrent in 0 until progressTotal
+        val showLoading = progressCurrent == -1
+        if (showDeterminate || showLoading) {
+            top.yukonga.miuix.kmp.basic.LinearProgressIndicator(
+                progress = if (showDeterminate) progressCurrent.toFloat() / progressTotal else null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+            )
         }
 
         Box(

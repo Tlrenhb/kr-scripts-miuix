@@ -258,12 +258,14 @@ private class JsBridgeImpl(
             node = virtualRoot,
             params = emptyMap(),
             tag = "web_" + System.currentTimeMillis(),
+            // Original event constants: EVENT_REDE=2, EVENT_READ_ERROR=4,
+            // EVENT_EXIT=-2 (ShellHandlerBase), message carries a trailing \n.
             onLine = { line, isErr ->
-                val type = if (isErr) "readError" else "read"
-                emit("{\"type\":\"$type\",\"message\":\"${jsonEscape(line)}\"}")
+                val type = if (isErr) 4 else 2
+                emit("{\"type\":$type,\"message\":\"${jsonEscape(line + "\n")}\"}")
             },
             onExit = { code ->
-                emit("{\"type\":\"exit\",\"message\":$code}")
+                emit("{\"type\":-2,\"message\":$code}")
             },
         )
         return process != null

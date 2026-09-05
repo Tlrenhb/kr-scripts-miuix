@@ -55,12 +55,45 @@ object PageLoader {
 
         var nodes: List<NodeInfoBase>? = null
         try {
-            val ref = if (page.pageConfigSh.isNotEmpty()) {
-                runtime.scriptEnv.executeResult(page.pageConfigSh, page).trim()
-            } else {
-                page.pageConfigPath
+            var inlineXml: String? = null
+            var ref = ""
+            if (page.pageConfigSh.isNotEmpty()) {
+                // Original PageConfigSh: result ending .xml → path; starting
+                // <?xml → parse the content directly; otherwise treat as path
+                // and fall back to the static config on failure.
+                val shResult = runtime.scriptEnv.executeResult(page.pageConfigSh, page).trim()
+                when {
+                    shResult.startsWith("<?xml") -> inlineXml = shResult
+                    shResult.isNotEmpty() -> ref = shResult
+                }
             }
-            if (ref.isNotEmpty()) {
+            if (ref.isEmpty()) ref = page.pageConfigPath
+            if (inlineXml != null || ref.isNotEmpty()) {
+                val extractor = DefaultAssetExtractor(runtime.assetSource, runtime.fileStore)
+                val locator = PathAnalysis(
+                    assets = runtime.assetSource,
+                    files = runtime.fileStore,
+                    shell = runtime.shell,
+                    extractor = extractor,
+                    parentDir = page.pageConfigDir,
+                )
+                nodes = if (inlineXml != null) {
+                    val reader = PageConfigReader(
+                        runtime.evaluator, locator, extractor,
+                        sourceStream = inlineXml.byteInputStream(),
+                    )
+                    reader.readConfigXml()
+                } else {
+                    val reader = PageConfigReader(
+                        evaluator = runtime.evaluator,
+                        locator = locator,
+                        extractor = extractor,
+                        pageConfigRef = ref,
+                        parentDir = page.pageConfigDir,
+                    )
+                    reader.readConfigXml()
+                }
+            }
                 val extractor = DefaultAssetExtractor(runtime.assetSource, runtime.fileStore)
                 val locator = PathAnalysis(
                     assets = runtime.assetSource,
