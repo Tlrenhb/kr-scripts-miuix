@@ -27,9 +27,24 @@ object ScriptActions {
         val node: RunnableNode,
         val script: String,
     ) {
+        /** Bounded tail buffer rendered by [LogDialog]. */
         val lines = mutableStateListOf<LogLine>()
+        var truncated by mutableStateOf(false)
+            private set
         var running by mutableStateOf(true)
         var exitCode by mutableStateOf<Int?>(null)
+
+        /**
+         * Keep the newest output: for real scripts, the final error/summary is
+         * more actionable than the earliest startup lines once the cap is hit.
+         */
+        fun appendLine(text: String, isError: Boolean) {
+            if (lines.size >= MAX_LINES) {
+                lines.removeAt(0)
+                truncated = true
+            }
+            lines.add(LogLine(text, isError))
+        }
 
         fun interrupt() {
             KrScriptRuntime.shell.execute(ScriptProcessRunner.interruptCommand(tag))
@@ -56,7 +71,7 @@ object ScriptActions {
             script = script,
         )
         if (!KrScriptRuntime.isReady) {
-            session.lines.add(LogLine("脚本引擎尚未初始化完成，请稍后重试", true))
+            session.appendLine("脚本引擎尚未初始化完成，请稍后重试", true)
             session.running = false
             session.exitCode = -1
             return session
@@ -72,13 +87,10 @@ object ScriptActions {
             params = params,
             tag = session.tag,
             onLine = { line, isErr ->
-                // Cap the buffer so long-running scripts cannot exhaust memory.
-                if (session.lines.size < MAX_LINES) {
-                    val translated = KrScriptRuntime.appContext?.let {
-                        com.projectkr.shell.runtime.ShellTranslation.resolveRow(it, line)
-                    } ?: line
-                    session.lines.add(LogLine(translated, isErr))
-                }
+                val translated = KrScriptRuntime.appContext?.let {
+                    ShellTranslation.resolveRow(it, line)
+                } ?: line
+                session.appendLine(translated, isErr)
             },
             onExit = { code ->
                 session.exitCode = code
@@ -86,7 +98,7 @@ object ScriptActions {
             },
         )
         if (process == null) {
-            session.lines.add(LogLine("未能启动命令行进程", true))
+            session.appendLine("未能启动命令行进程", true)
             session.running = false
             session.exitCode = -1
         }
