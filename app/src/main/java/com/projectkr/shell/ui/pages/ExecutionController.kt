@@ -51,7 +51,6 @@ class ExecutionController(
     var paramsAction by mutableStateOf<ActionNode?>(null)
         private set
     var activeSession by mutableStateOf<ScriptActions.Session?>(null)
-        private set
 
     /** Params collected by [com.projectkr.shell.ui.dialogs.ActionParamsDialog]. */
     var lastDraft: Map<String, String> = emptyMap()
