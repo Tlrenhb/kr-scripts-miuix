@@ -54,7 +54,10 @@ fun FavoritesScreen(
     val store = remember { FavoritesStore(context) }
 
 val content = rememberPageContent(reloadKey) {
-        loadFavoriteNodes(context)
+        // 1. favorite_config XML — the original favorites tab content.
+        val base = PageLoader.loadSubPage(PageLoader.favoritesPage()) ?: emptyList()
+        // 2. Starred items (this rewrite's enhancement) appended after.
+        base + loadFavoriteNodes(context)
     }
 
     val controller = remember(content.scope) {

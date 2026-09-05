@@ -69,6 +69,8 @@ fun PageDetailScreen(
         ExecutionController(
             scope = content.scope,
             openPage = { node -> openPageNode(context, node, backStack) },
+            onReloadRequest = { reloadKey++ },
+            onAutoFinish = { backStack.removeLastOrNull() },
             appContext = context.applicationContext,
         )
     }
