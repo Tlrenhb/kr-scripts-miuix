@@ -8,6 +8,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 /**
  * Starts/stops [FloatMonitorService] and guides the user through the
@@ -15,7 +18,8 @@ import android.provider.Settings
  */
 object FloatMonitor {
 
-    var running: Boolean = false
+    /** Observable so SwitchPreference stays accurate after double-tap close. */
+    var running: Boolean by mutableStateOf(false)
         internal set
 
     fun canDrawOverlays(context: Context): Boolean =

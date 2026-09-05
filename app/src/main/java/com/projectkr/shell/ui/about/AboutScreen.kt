@@ -15,18 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.projectkr.shell.BuildConfig
 import com.projectkr.shell.ui.theme.KrColorMode
 import com.projectkr.shell.ui.theme.KeyColorChoices
@@ -39,13 +34,17 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Background
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Link
+import top.yukonga.miuix.kmp.icon.extended.Settings
+import top.yukonga.miuix.kmp.icon.extended.Theme
+import top.yukonga.miuix.kmp.icon.extended.Tune
 import top.yukonga.miuix.kmp.icon.extended.WorldClock
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
-import top.yukonga.miuix.kmp.squircle.squircleClip
+import top.yukonga.miuix.kmp.squircle.squircleSurface
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -72,7 +71,7 @@ fun AboutScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(title = "关于", scrollBehavior = scrollBehavior)
+            TopAppBar(title = "设置", scrollBehavior = scrollBehavior)
         },
     ) { inner ->
         LazyColumn(
@@ -94,16 +93,28 @@ fun AboutScreen(
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .squircleClip(16.dp),
+                            .squircleSurface(
+                                color = MiuixTheme.colorScheme.primaryContainer,
+                                cornerRadius = 20.dp,
+                            ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("K", fontSize = 32.sp)
+                        Text(
+                            text = "KR",
+                            style = MiuixTheme.textStyles.title1,
+                            color = MiuixTheme.colorScheme.onPrimaryContainer,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text("Kr Script", fontSize = 24.sp, fontWeight = FontWeight.Medium)
                     Text(
-                        BuildConfig.VERSION_NAME + " (miuix)",
-                        fontSize = 14.sp,
+                        text = "Kr Script",
+                        style = MiuixTheme.textStyles.title2,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Text(
+                        text = "${BuildConfig.VERSION_NAME} · Miuix 版",
+                        style = MiuixTheme.textStyles.body2,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                     )
                 }
@@ -121,6 +132,9 @@ fun AboutScreen(
                         summary = MODE_LABELS.getOrElse(themeConfig.mode.ordinal) { MODE_LABELS[0] },
                         items = MODE_LABELS,
                         selectedIndex = themeConfig.mode.ordinal,
+                        startAction = {
+                            SettingsPreferenceIcon(MiuixIcons.Settings)
+                        },
                         onSelectedIndexChange = { index ->
                             update { it.copy(mode = KrColorMode.fromOrdinal(index)) }
                         },
@@ -132,6 +146,9 @@ fun AboutScreen(
                                 summary = "动态取色的种子颜色",
                                 items = KeyColorChoices.map { it.first },
                                 selectedIndex = themeConfig.keyColorIndex,
+                                startAction = {
+                                    SettingsPreferenceIcon(MiuixIcons.Theme)
+                                },
                                 onSelectedIndexChange = { index ->
                                     update { it.copy(keyColorIndex = index) }
                                 },
@@ -141,6 +158,9 @@ fun AboutScreen(
                                 summary = PaletteStyleChoices.getOrElse(themeConfig.paletteStyleIndex) { PaletteStyleChoices[0] }.first,
                                 items = PaletteStyleChoices.map { it.first },
                                 selectedIndex = themeConfig.paletteStyleIndex,
+                                startAction = {
+                                    SettingsPreferenceIcon(MiuixIcons.Background)
+                                },
                                 onSelectedIndexChange = { index ->
                                     update { it.copy(paletteStyleIndex = index) }
                                 },
@@ -150,6 +170,9 @@ fun AboutScreen(
                                 summary = "Spec2025 仅部分风格支持，其余自动回退",
                                 items = SPEC_LABELS,
                                 selectedIndex = themeConfig.colorSpecIndex,
+                                startAction = {
+                                    SettingsPreferenceIcon(MiuixIcons.Tune)
+                                },
                                 onSelectedIndexChange = { index ->
                                     update { it.copy(colorSpecIndex = index) }
                                 },
@@ -159,7 +182,7 @@ fun AboutScreen(
                 }
             }
 
-            item { SmallTitle(text = "项目") }
+            item { SmallTitle(text = "关于") }
             item {
                 Card(
                     modifier = Modifier
@@ -170,12 +193,7 @@ fun AboutScreen(
                         title = "GitHub 仓库",
                         summary = "Tlrenhb/kr-scripts-miuix",
                         startAction = {
-                            Icon(
-                                imageVector = MiuixIcons.Link,
-                                contentDescription = null,
-                                tint = MiuixTheme.colorScheme.onBackground,
-                                modifier = Modifier.padding(end = 16.dp),
-                            )
+                            SettingsPreferenceIcon(MiuixIcons.Link)
                         },
                         onClick = {
                             runCatching {
@@ -189,12 +207,7 @@ fun AboutScreen(
                         title = "Miuix 组件库",
                         summary = "compose-miuix-ui/miuix",
                         startAction = {
-                            Icon(
-                                imageVector = MiuixIcons.WorldClock,
-                                contentDescription = null,
-                                tint = MiuixTheme.colorScheme.onBackground,
-                                modifier = Modifier.padding(end = 16.dp),
-                            )
+                            SettingsPreferenceIcon(MiuixIcons.WorldClock)
                         },
                         onClick = {
                             runCatching {
@@ -208,12 +221,7 @@ fun AboutScreen(
                         title = "KrScript 文档",
                         summary = "XML 配置格式说明",
                         startAction = {
-                            Icon(
-                                imageVector = MiuixIcons.File,
-                                contentDescription = null,
-                                tint = MiuixTheme.colorScheme.onBackground,
-                                modifier = Modifier.padding(end = 16.dp),
-                            )
+                            SettingsPreferenceIcon(MiuixIcons.File)
                         },
                         onClick = {
                             runCatching {
@@ -226,6 +234,7 @@ fun AboutScreen(
                 }
             }
 
+            item { SmallTitle(text = "版本与许可") }
             item {
                 Card(
                     modifier = Modifier
@@ -234,7 +243,7 @@ fun AboutScreen(
                 ) {
                     Text(
                         text = "Compose + Miuix 重写版 · GPL-3.0\n原版 kr-scripts © helloklf",
-                        fontSize = 13.sp,
+                        style = MiuixTheme.textStyles.footnote1,
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -244,4 +253,18 @@ fun AboutScreen(
             }
         }
     }
+}
+
+/**
+ * KernelSU settings use a uniform leading-icon rail. In Miuix 0.9.4 the
+ * equivalent slot is `startAction` (not the reference app's old leftAction).
+ */
+@Composable
+private fun SettingsPreferenceIcon(icon: ImageVector) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        tint = MiuixTheme.colorScheme.onBackground,
+        modifier = Modifier.padding(end = 16.dp),
+    )
 }

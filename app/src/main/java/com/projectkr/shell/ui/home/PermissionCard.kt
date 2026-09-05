@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -19,16 +18,21 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.projectkr.shell.service.FloatMonitor
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Layers
+import top.yukonga.miuix.kmp.icon.extended.Lock
+import top.yukonga.miuix.kmp.icon.extended.Messages
+import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
@@ -55,41 +59,32 @@ fun PermissionCard(modifier: Modifier = Modifier) {
     refreshKey
 
     Card(modifier = modifier) {
-        Column(
-            Modifier
-                .padding(16.dp)
-                .padding(bottom = 4.dp),
-        ) {
-            Text(
-                text = "权限",
-                fontSize = 15.sp,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
+        // 所有文件访问 (Android 11+ special access; legacy below 30).
+        PermRow(
+            label = "所有文件访问",
+            granted = hasAllFilesAccess(context),
+            summary = "脚本与文件选择器读写任意文件",
+            icon = MiuixIcons.File,
+            onGrant = { openAllFilesSettings(context) },
+        )
 
-            // 所有文件访问 (Android 11+ special access; legacy below 30).
-            PermRow(
-                label = "所有文件访问",
-                granted = hasAllFilesAccess(context),
-                summary = "脚本与文件选择器读写任意文件",
-                onGrant = { openAllFilesSettings(context) },
-            )
+        // 悬浮窗.
+        PermRow(
+            label = "显示悬浮窗",
+            granted = FloatMonitor.canDrawOverlays(context),
+            summary = "桌面悬浮窗监控需要此权限",
+            icon = MiuixIcons.Layers,
+            onGrant = { openOverlaySettings(context) },
+        )
 
-            // 悬浮窗.
-            PermRow(
-                label = "显示悬浮窗",
-                granted = FloatMonitor.canDrawOverlays(context),
-                summary = "桌面悬浮窗监控需要此权限",
-                onGrant = { openOverlaySettings(context) },
-            )
-
-            // 通知 (Android 13+ runtime).
-            PermRow(
-                label = "通知",
-                granted = canPostNotifications(context),
-                summary = "后台任务完成通知",
-                onGrant = { openNotificationSettings(context) },
-            )
-        }
+        // 通知 (Android 13+ runtime).
+        PermRow(
+            label = "通知",
+            granted = canPostNotifications(context),
+            summary = "后台任务完成通知",
+            icon = MiuixIcons.Messages,
+            onGrant = { openNotificationSettings(context) },
+        )
     }
 }
 
@@ -98,12 +93,35 @@ private fun PermRow(
     label: String,
     granted: Boolean,
     summary: String,
+    icon: ImageVector,
     onGrant: () -> Unit,
 ) {
+    val statusIcon = if (granted) MiuixIcons.Ok else MiuixIcons.Lock
     ArrowPreference(
-        title = label + if (granted) " · 已授权" else " · 未授权",
-        summary = summary,
-        onClick = if (granted) null else onGrant,
+        title = label,
+        summary = if (granted) "$summary · 已授权" else "$summary · 未授权",
+        startAction = {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MiuixTheme.colorScheme.onBackground,
+                modifier = Modifier.padding(end = 16.dp),
+            )
+        },
+        endActions = {
+            Icon(
+                imageVector = statusIcon,
+                contentDescription = if (granted) "$label 已授权" else "$label 未授权",
+                tint = if (granted) {
+                    MiuixTheme.colorScheme.primary
+                } else {
+                    MiuixTheme.colorScheme.error
+                },
+            )
+        },
+        // A granted row remains readable and can still open the OS detail page;
+        // color + status text, rather than disabled opacity, convey its state.
+        onClick = onGrant,
     )
 }
 

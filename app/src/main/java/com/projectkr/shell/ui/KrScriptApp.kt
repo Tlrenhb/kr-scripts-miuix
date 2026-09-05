@@ -45,6 +45,7 @@ import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Home
 import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
 import top.yukonga.miuix.kmp.nav.core.NavDisplayEffects
 import top.yukonga.miuix.kmp.nav.core.NavKey
@@ -153,7 +154,7 @@ fun KrScriptApp(shortcut: ShortcutLaunch? = null) {
 }
 
 /**
- * Four-tab shell (首页 / 页面 / 收藏 / 关于). Tab selection is local UI state;
+ * Four-tab shell (首页 / 页面 / 收藏 / 设置). Tab selection is local UI state;
  * each tab screen hosts its own Scaffold (and thus its own Overlay host).
  */
 @Composable
@@ -170,7 +171,7 @@ private fun MainTabsScreen(
         if (showHome) add(TabItem("首页", MiuixIcons.Home, TabKind.HOME))
         add(TabItem("页面", MiuixIcons.ListView, TabKind.PAGES))
         add(TabItem("收藏", MiuixIcons.Favorites, TabKind.FAVORITES))
-        add(TabItem("关于", MiuixIcons.Info, TabKind.ABOUT))
+        add(TabItem("设置", MiuixIcons.Settings, TabKind.ABOUT))
     }
     var selectedTab by remember { mutableIntStateOf(0) }
     // Clamp selection when the home tab disappears after init completes.
@@ -230,6 +231,7 @@ private fun MainTabsScreen(
                     TabKind.HOME -> HomeScreen(
                         rooted = runtime.rooted,
                         onOpenFileSelector = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
+                        onOpenMonitor = { pushIfAbsent(backStack, Route.Monitor) },
                     )
                     TabKind.PAGES -> PagesScreen(backStack = backStack)
                     TabKind.FAVORITES -> FavoritesScreen(backStack = backStack)

@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -26,7 +25,7 @@ fun TrendChart(
 ) {
     val lineColor = MiuixTheme.colorScheme.primary
     val fillColor = remember(lineColor) { lineColor.copy(alpha = 0.18f) }
-    val gridColor = Color.Gray.copy(alpha = 0.15f)
+    val gridColor = MiuixTheme.colorScheme.outline.copy(alpha = 0.35f)
 
     Canvas(modifier = modifier.fillMaxWidth().height(96.dp)) {
         if (samples.size < 2) return@Canvas

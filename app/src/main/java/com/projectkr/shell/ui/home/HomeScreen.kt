@@ -6,9 +6,9 @@ package com.projectkr.shell.ui.home
 import android.app.Activity
 import android.os.Build
 import android.widget.Toast
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,10 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.projectkr.krscript.core.model.RunnableNode
 import com.projectkr.shell.runtime.ScriptActions
 import com.projectkr.shell.ui.dialogs.LogDialog
@@ -46,10 +44,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -60,12 +57,14 @@ import top.yukonga.miuix.kmp.icon.extended.Layers
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Reset
+import top.yukonga.miuix.kmp.icon.extended.Stopwatch
 import top.yukonga.miuix.kmp.icon.extended.Unlock
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val SAMPLE_INTERVAL_MS = 1500L
 private const val MAX_SAMPLES = 60
@@ -87,6 +86,7 @@ private data class StatsSample(
 fun HomeScreen(
     rooted: Boolean,
     onOpenFileSelector: () -> Unit,
+    onOpenMonitor: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var cpuUsage by remember { mutableFloatStateOf(-1f) }
@@ -100,8 +100,12 @@ fun HomeScreen(
     var batteryLevel by remember { mutableIntStateOf(-1) }
     var batteryTemp by remember { mutableStateOf(Float.NaN) }
     var coreFreqs by remember { mutableStateOf<List<Int>>(emptyList()) }
-    var floatSummary by remember {
-        mutableStateOf(if (com.projectkr.shell.service.FloatMonitor.running) "运行中 · 点击停止" else "在桌面显示 CPU/RAM 悬浮窗")
+    // FloatMonitor.running is Compose state, so the row also updates when the
+    // overlay is closed by its original double-tap gesture.
+    val floatSummary = if (com.projectkr.shell.service.FloatMonitor.running) {
+        "运行中 · 关闭开关即停止"
+    } else {
+        "在桌面显示 CPU/GPU/RAM/电池监控"
     }
     val cpuSamples = remember { mutableStateListOf<Float>() }
     val memSamples = remember { mutableStateListOf<Float>() }
@@ -200,6 +204,11 @@ fun HomeScreen(
                 scrollBehavior = scrollBehavior,
                 actions = {
                     com.projectkr.shell.ui.common.HintedAction(
+                        text = "详细监控",
+                        icon = MiuixIcons.Stopwatch,
+                        onClick = onOpenMonitor,
+                    )
+                    com.projectkr.shell.ui.common.HintedAction(
                         text = "电源菜单",
                         icon = MiuixIcons.Reset,
                         onClick = { powerMenu = true },
@@ -218,27 +227,40 @@ fun HomeScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
         ) {
             item {
-                // Hero status card (KernelSU StatusCard pattern): tinted
-                // background + watermark icon, clickable into the monitor.
-                val statusTint = if (rooted) Color(0xFFDFFAE4) else Color(0xFFF8E2E2)
-                if (!isSystemInDarkTheme()) {
-                    // light mode uses the tints above; dark mode uses deep tints
+                // KernelSU-style status surface. Use semantic Miuix containers
+                // so this remains correct for light, dark, and Monet palettes.
+                val statusColor = if (rooted) {
+                    MiuixTheme.colorScheme.primaryContainer
+                } else {
+                    MiuixTheme.colorScheme.errorContainer
                 }
-                val tint = if (isSystemInDarkTheme()) {
-                    if (rooted) Color(0xFF1A3825) else Color(0xFF310808)
-                } else statusTint
+                val statusContentColor = if (rooted) {
+                    MiuixTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MiuixTheme.colorScheme.onErrorContainer
+                }
+                val statusAccent = if (rooted) {
+                    MiuixTheme.colorScheme.primary
+                } else {
+                    MiuixTheme.colorScheme.error
+                }
                 Card(
                     modifier = Modifier
                         .padding(horizontal = 12.dp)
                         .padding(bottom = 12.dp),
-                    colors = top.yukonga.miuix.kmp.basic.CardDefaults.defaultColors(color = tint),
+                    colors = CardDefaults.defaultColors(
+                        color = statusColor,
+                        contentColor = statusContentColor,
+                    ),
+                    onClick = onOpenMonitor,
+                    showIndication = true,
+                    pressFeedbackType = PressFeedbackType.Sink,
                 ) {
                     Box(Modifier.fillMaxWidth()) {
                         Icon(
                             imageVector = if (rooted) MiuixIcons.Ok else MiuixIcons.Unlock,
                             contentDescription = null,
-                            tint = if (rooted) Color(0xFF36D167).copy(alpha = 0.18f)
-                                   else Color(0xFFF72727).copy(alpha = 0.12f),
+                            tint = statusAccent.copy(alpha = 0.16f),
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
                                 .offset(x = 38.dp, y = 45.dp)
@@ -246,15 +268,21 @@ fun HomeScreen(
                         )
                         Column(Modifier.padding(20.dp)) {
                             Text(
-                                if (rooted) "ROOT 已授权" else "ROOT 未授权",
-                                fontSize = 20.sp,
+                                text = if (rooted) "ROOT 已授权" else "ROOT 未授权",
+                                style = MiuixTheme.textStyles.title3,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                Build.MODEL + " · Android " + Build.VERSION.RELEASE,
-                                fontSize = 14.sp,
-                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                text = "${Build.MODEL} · Android ${Build.VERSION.RELEASE}",
+                                style = MiuixTheme.textStyles.body2,
+                                color = statusContentColor.copy(alpha = 0.72f),
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = "轻触查看实时监控",
+                                style = MiuixTheme.textStyles.footnote1,
+                                color = statusContentColor.copy(alpha = 0.72f),
                             )
                         }
                     }
@@ -262,104 +290,137 @@ fun HomeScreen(
             }
 
             item {
-                // Two stat mini-cards: live CPU and RAM figures.
+                // Live metrics as tactile cards, following KernelSU's dashboard hierarchy.
                 Row(
                     Modifier
                         .padding(horizontal = 12.dp)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     StatMiniCard(
                         label = "CPU",
                         value = if (cpuUsage >= 0) "${(cpuUsage * 100).toInt()}%" else "-",
+                        summary = "实时负载",
+                        onClick = onOpenMonitor,
                         modifier = Modifier.weight(1f),
                     )
                     StatMiniCard(
                         label = "内存",
                         value = if (memTotal > 0) fmt(memUsed) else "-",
+                        summary = if (memTotal > 0) "共 ${fmt(memTotal)}" else "正在读取",
+                        onClick = onOpenMonitor,
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
 
+            item { SmallTitle(text = "设备信息") }
             item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        InfoRow("型号", Build.MODEL)
-                        InfoRow("Android", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")")
-                        InfoRow("内核", System.getProperty("os.version").orEmpty())
-                    }
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
+                    insideMargin = PaddingValues(16.dp),
+                ) {
+                    InfoRow("型号", Build.MODEL)
+                    InfoRow("Android", "${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}）")
+                    InfoRow("内核", System.getProperty("os.version").orEmpty(), bottomPadding = 0.dp)
                 }
             }
 
+            item { SmallTitle(text = "实时状态") }
             item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        SectionTitle(
-                            "CPU 使用率" + if (cpuUsage >= 0) " ${(animCpuUsage * 100).toInt()}%" else "",
-                        )
-                        TrendChart(samples = cpuSamples.toList(), maxValue = 1f)
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            "内存 ${fmt(animMemUsed.toLong())} / ${fmt(memTotal)}",
-                            fontSize = 13.sp,
-                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                        )
-                        LinearProgressIndicator(
-                            progress = if (memTotal > 0) memUsed.toFloat() / memTotal else 0f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp),
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        TrendChart(samples = memSamples.toList(), maxValue = 1f)
-                    }
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
+                    insideMargin = PaddingValues(16.dp),
+                ) {
+                    Text(
+                        text = "CPU 使用率" + if (cpuUsage >= 0) " ${(animCpuUsage * 100).toInt()}%" else "",
+                        style = MiuixTheme.textStyles.headline1,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    TrendChart(samples = cpuSamples.toList(), maxValue = 1f)
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "内存 ${fmt(animMemUsed.toLong())} / ${fmt(memTotal)}",
+                        style = MiuixTheme.textStyles.headline1,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    LinearProgressIndicator(
+                        progress = if (memTotal > 0) memUsed.toFloat() / memTotal else 0f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    TrendChart(samples = memSamples.toList(), maxValue = 1f)
                 }
             }
 
+            item { SmallTitle(text = "权限") }
             item {
                 com.projectkr.shell.ui.home.PermissionCard(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
                 )
             }
 
+            item { SmallTitle(text = "CPU 核心频率") }
             item {
-                SmallTitle(text = "CPU 核心频率")
-                Card(modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 12.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        if (coreFreqs.isEmpty()) {
-                            Text("(暂无数据)", fontSize = 13.sp)
-                        } else {
-                            coreFreqs.forEachIndexed { index, freq ->
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 2.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                ) {
-                                    Text("CPU $index", fontSize = 13.sp)
-                                    Text(if (freq > 0) "${freq / 1000} MHz" else "-", fontSize = 13.sp)
-                                }
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
+                    insideMargin = PaddingValues(16.dp),
+                ) {
+                    if (coreFreqs.isEmpty()) {
+                        Text(
+                            text = "暂无数据",
+                            style = MiuixTheme.textStyles.footnote1,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                    } else {
+                        coreFreqs.forEachIndexed { index, freq ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "CPU $index",
+                                    style = MiuixTheme.textStyles.footnote1,
+                                )
+                                Text(
+                                    text = if (freq > 0) "${freq / 1000} MHz" else "-",
+                                    style = MiuixTheme.textStyles.footnote1,
+                                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                )
                             }
                         }
                     }
                 }
             }
 
+            item { SmallTitle(text = "电池") }
             item {
-                SmallTitle(text = "电池")
-                Card(modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .padding(bottom = 12.dp)) {
-                    Column(Modifier.padding(16.dp)) {
-                        InfoRow("电量", if (batteryLevel >= 0) "$batteryLevel%" else "-")
-                        InfoRow(
-                            "温度",
-                            if (!batteryTemp.isNaN()) String.format("%.1f ℃", batteryTemp) else "-",
-                        )
-                    }
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
+                    insideMargin = PaddingValues(16.dp),
+                ) {
+                    InfoRow("电量", if (batteryLevel >= 0) "$batteryLevel%" else "-")
+                    InfoRow(
+                        label = "温度",
+                        value = if (!batteryTemp.isNaN()) String.format("%.1f ℃", batteryTemp) else "-",
+                        bottomPadding = 0.dp,
+                    )
                 }
             }
 
@@ -384,11 +445,6 @@ fun HomeScreen(
                         },
                         onCheckedChange = {
                             com.projectkr.shell.service.FloatMonitor.toggle(context)
-                            floatSummary = if (com.projectkr.shell.service.FloatMonitor.running) {
-                                "运行中 · 关闭开关即停止"
-                            } else {
-                                "在桌面显示 CPU/RAM 悬浮窗"
-                            }
                         },
                     )
                     ArrowPreference(
@@ -453,39 +509,59 @@ fun HomeScreen(
 }
 
 @Composable
-private fun StatMiniCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(modifier = modifier) {
-        Column(Modifier.padding(16.dp)) {
-            Text(
-                label,
-                fontSize = 15.sp,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(value, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
-        }
+private fun StatMiniCard(
+    label: String,
+    value: String,
+    summary: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        insideMargin = PaddingValues(16.dp),
+        onClick = onClick,
+        showIndication = true,
+        // Sink preserves Miuix feedback without reintroducing the removed
+        // card-tilt / gesture-physics treatment.
+        pressFeedbackType = PressFeedbackType.Sink,
+    ) {
+        Text(
+            text = label,
+            style = MiuixTheme.textStyles.body2,
+            fontWeight = FontWeight.Medium,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        )
+        Text(
+            text = value,
+            style = MiuixTheme.textStyles.title2,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = summary,
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        )
     }
 }
 
 @Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        fontSize = 15.sp,
-        modifier = Modifier.padding(bottom = 8.dp),
-    )
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(
-        Modifier
+private fun InfoRow(label: String, value: String, bottomPadding: androidx.compose.ui.unit.Dp = 16.dp) {
+    Column(
+        modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(bottom = bottomPadding),
     ) {
-        Text(label, fontSize = 13.sp, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
-        Text(value, fontSize = 13.sp)
+        Text(
+            text = label,
+            style = MiuixTheme.textStyles.headline1,
+            fontWeight = FontWeight.Medium,
+        )
+        Text(
+            text = value,
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.padding(top = 2.dp),
+        )
     }
 }
 
