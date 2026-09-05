@@ -52,6 +52,7 @@ import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -59,6 +60,7 @@ import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Reset
 import top.yukonga.miuix.kmp.icon.extended.Unlock
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -320,9 +322,11 @@ fun HomeScreen(
             }
 
             item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                SmallTitle(text = "CPU 核心频率")
+                Card(modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 12.dp)) {
                     Column(Modifier.padding(16.dp)) {
-                        SectionTitle("CPU 核心频率")
                         if (coreFreqs.isEmpty()) {
                             Text("(暂无数据)", fontSize = 13.sp)
                         } else {
@@ -343,9 +347,11 @@ fun HomeScreen(
             }
 
             item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                SmallTitle(text = "电池")
+                Card(modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .padding(bottom = 12.dp)) {
                     Column(Modifier.padding(16.dp)) {
-                        SectionTitle("电池")
                         InfoRow("电量", if (batteryLevel >= 0) "$batteryLevel%" else "-")
                         InfoRow(
                             "温度",
@@ -356,14 +362,28 @@ fun HomeScreen(
             }
 
             item {
-                Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    ArrowPreference(
+                SmallTitle(text = "工具")
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
+                ) {
+                    SwitchPreference(
                         title = "悬浮窗监控",
                         summary = floatSummary,
-                        onClick = {
+                        checked = com.projectkr.shell.service.FloatMonitor.running,
+                        startAction = {
+                            Icon(
+                                imageVector = MiuixIcons.Layers,
+                                contentDescription = null,
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(end = 16.dp),
+                            )
+                        },
+                        onCheckedChange = {
                             com.projectkr.shell.service.FloatMonitor.toggle(context)
                             floatSummary = if (com.projectkr.shell.service.FloatMonitor.running) {
-                                "运行中 · 点击停止"
+                                "运行中 · 关闭开关即停止"
                             } else {
                                 "在桌面显示 CPU/RAM 悬浮窗"
                             }
@@ -372,6 +392,14 @@ fun HomeScreen(
                     ArrowPreference(
                         title = "选择文件",
                         summary = "浏览设备文件",
+                        startAction = {
+                            Icon(
+                                imageVector = MiuixIcons.File,
+                                contentDescription = null,
+                                tint = MiuixTheme.colorScheme.onBackground,
+                                modifier = Modifier.padding(end = 16.dp),
+                            )
+                        },
                         onClick = onOpenFileSelector,
                     )
                 }
