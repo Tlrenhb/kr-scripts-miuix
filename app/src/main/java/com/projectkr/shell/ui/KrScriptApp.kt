@@ -6,24 +6,28 @@ package com.projectkr.shell.ui
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.projectkr.shell.ShortcutLaunch
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.dp
 import com.projectkr.shell.navigation.Route
 import com.projectkr.shell.ui.fileselector.FileSelectorScreen
 import com.projectkr.shell.ui.about.AboutScreen
@@ -38,12 +42,13 @@ import com.projectkr.shell.ui.theme.loadThemeConfig
 import com.projectkr.shell.ui.theme.rememberThemeController
 import com.projectkr.shell.ui.theme.saveThemeConfig
 import top.yukonga.miuix.kmp.basic.NavigationBar
-import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.NavigationRail
+import top.yukonga.miuix.kmp.basic.NavigationRailItem
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Favorites
 import top.yukonga.miuix.kmp.icon.extended.Home
-import top.yukonga.miuix.kmp.icon.extended.Info
 import top.yukonga.miuix.kmp.icon.extended.ListView
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.nav.core.NavDisplay
@@ -54,6 +59,8 @@ import top.yukonga.miuix.kmp.nav.core.rememberNavSystemCornerRadius
 import top.yukonga.miuix.kmp.nav.transition.NavSwipeDirection
 import top.yukonga.miuix.kmp.nav.transition.NavTransitions
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.NavigationRailValue
+import top.yukonga.miuix.kmp.basic.rememberNavigationRailState
 
 private enum class TabKind { HOME, PAGES, FAVORITES, ABOUT }
 
@@ -175,7 +182,9 @@ private fun MainTabsScreen(
         add(TabItem("收藏", MiuixIcons.Favorites, TabKind.FAVORITES))
         add(TabItem("设置", MiuixIcons.Settings, TabKind.ABOUT))
     }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    // Tab selection survives configuration/size changes; compact and wide
+    // chrome deliberately consume this one source of truth.
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     // Clamp selection when the home tab disappears after init completes.
     LaunchedEffect(showHome) {
         if (!showHome && selectedTab == 0) selectedTab = 0 // first visible is 页面
@@ -192,14 +201,55 @@ private fun MainTabsScreen(
         }
     }
 
-    // Outer Scaffold owns the NavigationBar; consumeWindowInsets makes the
-    // inner per-tab Scaffolds see the already-applied insets exactly once
-    // (per the Scaffold KDoc: padding + consumeWindowInsets).
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
+    // KernelSU/Miuix adaptive shell: touch-first bottom navigation on compact
+    // screens, expanding NavigationRail from the same selected-tab state when
+    // a tablet, foldable, desktop, or wide landscape window has room.
+    val density = LocalDensity.current
+    val windowSize = LocalWindowInfo.current.containerSize
+    val useNavigationRail = with(density) {
+        val width = windowSize.width.toDp()
+        val height = windowSize.height.toDp()
+        width >= 840.dp || (width >= 600.dp && height / width < 1.2f)
+    }
+    val railState = rememberNavigationRailState(
+        // Keep the rail collapsed initially; users can opt into its official
+        // built-in expanded presentation from its header control.
+        initialValue = NavigationRailValue.Collapsed,
+    )
+
+    @Composable
+    fun TabContent() {
+        androidx.compose.animation.AnimatedContent(
+            targetState = selectedTab,
+            // Keep tab changes calm: only a standard fade, with no depth,
+            // card transition, or gesture-physics treatment.
+            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            label = "tab-switch",
+        ) { tabIndex ->
+            when (tabs.getOrNull(tabIndex.coerceIn(0, tabs.lastIndex))?.kind) {
+                TabKind.HOME -> HomeScreen(
+                    rooted = runtime.rooted,
+                    onOpenFileSelector = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
+                    onOpenMonitor = { pushIfAbsent(backStack, Route.Monitor) },
+                )
+                TabKind.PAGES -> PagesScreen(backStack = backStack)
+                TabKind.FAVORITES -> FavoritesScreen(backStack = backStack)
+                else -> AboutScreen(
+                    themeConfig = themeConfig,
+                    onThemeConfigChange = onThemeConfigChange,
+                )
+            }
+        }
+    }
+
+    // Keep TabContent at one composition location. Switching phone ↔ tablet
+    // therefore changes chrome only, rather than disposing every tab's local
+    // scroll/form state (the Miuix Example uses this same structure).
+    Row(modifier = Modifier.fillMaxSize()) {
+        if (useNavigationRail) {
+            NavigationRail(state = railState) {
                 tabs.forEachIndexed { index, tab ->
-                    NavigationBarItem(
+                    NavigationRailItem(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
                         icon = tab.icon,
@@ -207,41 +257,40 @@ private fun MainTabsScreen(
                     )
                 }
             }
-        },
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .padding(innerPadding)
-                .consumeWindowInsets(innerPadding),
-        ) {
-            androidx.compose.animation.AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = {
-                    // Directional slide: moving right slides content left.
-                    val toRight = targetState > initialState
-                    if (toRight) {
-                        (slideInHorizontally { it } + fadeIn()) togetherWith
-                            (slideOutHorizontally { -it } + fadeOut())
-                    } else {
-                        (slideInHorizontally { -it } + fadeIn()) togetherWith
-                            (slideOutHorizontally { it } + fadeOut())
+        }
+        Scaffold(
+            modifier = if (useNavigationRail) {
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            } else {
+                Modifier.fillMaxSize()
+            },
+            bottomBar = {
+                if (!useNavigationRail) {
+                    NavigationBar {
+                        tabs.forEachIndexed { index, tab ->
+                            NavigationBarItem(
+                                selected = selectedTab == index,
+                                onClick = { selectedTab = index },
+                                icon = tab.icon,
+                                label = tab.label,
+                            )
+                        }
                     }
-                },
-                label = "tab-switch",
-            ) { tabIndex ->
-                when (tabs.getOrNull(tabIndex.coerceIn(0, tabs.lastIndex))?.kind) {
-                    TabKind.HOME -> HomeScreen(
-                        rooted = runtime.rooted,
-                        onOpenFileSelector = { pushIfAbsent(backStack, Route.FileSelector(startDir = "/")) },
-                        onOpenMonitor = { pushIfAbsent(backStack, Route.Monitor) },
-                    )
-                    TabKind.PAGES -> PagesScreen(backStack = backStack)
-                    TabKind.FAVORITES -> FavoritesScreen(backStack = backStack)
-                    else -> AboutScreen(
-                        themeConfig = themeConfig,
-                        onThemeConfigChange = onThemeConfigChange,
-                    )
                 }
+            },
+        ) { innerPadding ->
+            // The outer shell consumes its insets once. Every individual tab
+            // still owns its Scaffold/popup host, but receives no duplicate
+            // status/nav-bar inset from this ancestor.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .consumeWindowInsets(innerPadding),
+            ) {
+                TabContent()
             }
         }
     }
