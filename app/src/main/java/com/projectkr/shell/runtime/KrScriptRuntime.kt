@@ -51,6 +51,14 @@ object KrScriptRuntime {
     @Volatile
     private var initialized = false
 
+    /** Non-empty output of before_start_sh, surfaced by the UI layer. */
+    var lastBeforeStartOutput: String? = null
+        private set
+
+    fun clearBeforeStartOutput() {
+        lastBeforeStartOutput = null
+    }
+
     /** Evaluator used by PageConfigReader while parsing configs (@string translated). */
     val evaluator = ScriptEvaluator { script, node ->
         ShellTranslation.resolveRow(appContext, scriptEnv.executeResult(script, node))
@@ -141,9 +149,17 @@ object KrScriptRuntime {
         )
 
         // before_start_sh runs once after the engine is ready (original key).
+        // Original splash showed its output on screen; we surface non-empty
+        // results through a toast from the app layer.
         confMap[com.projectkr.krscript.core.config.ConfReader.BEFORE_START_SH]
             ?.takeIf { it.isNotEmpty() }
-            ?.let { scriptEnv.executeResult(it, null) }
+            ?.let { script ->
+                val output = scriptEnv.executeResult(script, null)
+                if (output.isNotBlank()) {
+                    lastBeforeStartOutput = output
+                    android.util.Log.i("KrBeforeStart", output)
+                }
+            }
 
         initialized = ok
         isReady = ok
