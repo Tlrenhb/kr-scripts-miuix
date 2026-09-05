@@ -6,11 +6,20 @@ package com.projectkr.shell.ui.about
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.draw.clip
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.TopAppBar
+import top.yukonga.miuix.kmp.utils.scrollEndHaptic
+import top.yukonga.miuix.kmp.utils.overScrollVertical
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -57,17 +66,49 @@ fun AboutScreen(
     }
     val context = LocalContext.current
 
+    val scrollBehavior = MiuixScrollBehavior()
     Scaffold(
         modifier = modifier,
-        topBar = { SmallTopAppBar(title = "关于") },
+        topBar = {
+            TopAppBar(
+                title = "关于",
+                scrollBehavior = scrollBehavior,
+            )
+        },
     ) { inner ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(inner)
-                .verticalScroll(rememberScrollState()),
+                .scrollEndHaptic()
+                .overScrollVertical()
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
         ) {
-            SmallTitle(text = "外观")
+            item {
+                // Hero header: app icon + name + version (KernelSU About pattern).
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        Modifier
+                            .size(80.dp)
+                            .clip(top.yukonga.miuix.kmp.squircle.SquircleShape(16.dp)),
+                    ) {
+                        Text("K", fontSize = 32.sp, modifier = Modifier.align(Alignment.Center))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("Kr Script", fontSize = 24.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium)
+                    Text(
+                        com.projectkr.shell.BuildConfig.VERSION_NAME + " (miuix)",
+                        fontSize = 14.sp,
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    )
+                }
+            }
+            item { SmallTitle(text = "外观")
             Card(
                 modifier = Modifier
                     .padding(horizontal = 12.dp)
