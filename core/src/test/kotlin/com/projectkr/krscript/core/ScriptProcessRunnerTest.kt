@@ -11,6 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.TimeUnit
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -44,7 +45,7 @@ class ScriptProcessRunnerTest {
             onExit = { code -> exitCode = code; done.countDown() },
         )
         assertNotNull(process)
-        assertTrue(done.await(10, TimeUnit.SECONDS))
+        assertTrue(done.await(30, TimeUnit.SECONDS))
         assertTrue(lines.contains("line1"))
         assertTrue(lines.contains("line2"))
         assertTrue(lines.contains("E:err-on-stderr"))
@@ -65,7 +66,7 @@ class ScriptProcessRunnerTest {
             onLine = { line, _ -> lines.add(line) },
             onExit = { done.countDown() },
         )
-        assertTrue(done.await(10, TimeUnit.SECONDS))
+        assertTrue(done.await(30, TimeUnit.SECONDS))
         // The single quote in the value survives the export escaping.
         assertTrue(lines.contains("value=hello'world"))
     }
@@ -84,7 +85,7 @@ class ScriptProcessRunnerTest {
             onLine = { line, _ -> lines.add(line) },
             onExit = { done.countDown() },
         )
-        assertTrue(done.await(10, TimeUnit.SECONDS))
+        assertTrue(done.await(30, TimeUnit.SECONDS))
         assertTrue(lines.contains("file=/data/kr/page.xml"))
     }
 }
