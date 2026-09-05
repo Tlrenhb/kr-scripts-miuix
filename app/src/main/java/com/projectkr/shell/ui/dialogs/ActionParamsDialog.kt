@@ -33,6 +33,7 @@ import top.yukonga.miuix.kmp.basic.TextButton
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.CheckboxPreference
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
@@ -87,8 +88,13 @@ private fun ActionParamsDialogContent(
     var ready by remember(node.index) { mutableStateOf(false) }
 
     // Resolve value-sh / options-sh on the IO dispatcher before showing the form.
+    // Reset on close so reopening the same action reflects current shell state.
     LaunchedEffect(node.index, show) {
-        if (!show || ready) return@LaunchedEffect
+        if (!show) {
+            ready = false
+            return@LaunchedEffect
+        }
+        if (ready) return@LaunchedEffect
         draft = withContext(Dispatchers.IO) {
             val map = LinkedHashMap<String, String>()
             node.params?.forEach { param ->
@@ -185,20 +191,28 @@ private fun ActionParamsDialogContent(
         )
     }
 
-    // Sibling popup: installed-app chooser for app/packages params.
+    // Sibling popup: installed-app chooser for app/packages params. `options-sh`
+    // takes priority as a runtime filter, exactly like normal option parameters.
+    val activeAppParam = node.params?.firstOrNull { it.name.orEmpty() == appChooserFor }
+    val activeAppName = activeAppParam?.name.orEmpty()
+    val activeAppSeparator = activeAppParam?.separator ?: "\n"
+    val activeAppFilter = selectOptions[activeAppName]
+        ?.takeIf { it.isNotEmpty() }
+        ?.mapNotNull { it.value }
+        ?: activeAppParam?.options?.mapNotNull { it.value }
+        ?: emptyList()
     AppChooserDialog(
         show = appChooserFor != null,
-        filterPackages = node.params
-            ?.firstOrNull { it.name.orEmpty() == appChooserFor }
-            ?.options?.mapNotNull { it.value },
-        multiple = node.params
-            ?.firstOrNull { it.name.orEmpty() == appChooserFor }
-            ?.multiple == true,
+        filterPackages = activeAppFilter.takeIf { it.isNotEmpty() },
+        multiple = activeAppParam?.multiple == true,
+        initialSelection = draft[activeAppName]
+            .orEmpty()
+            .split(activeAppSeparator)
+            .filter { it.isNotEmpty() }
+            .toSet(),
         onPicked = { packages ->
-            val name = appChooserFor
-            if (name != null) {
-                val sep = node.params?.firstOrNull { it.name.orEmpty() == name }?.separator ?: "\n"
-                draft = draft + (name to packages.joinToString(sep))
+            if (activeAppName.isNotEmpty()) {
+                draft = draft + (activeAppName to packages.joinToString(activeAppSeparator))
             }
             appChooserFor = null
         },
@@ -256,7 +270,10 @@ private fun ParamField(
                 valueText = sliderValue.toInt().toString(),
             )
         }
-        options.isNotEmpty() || param.type == "select" || param.type == "multiple" -> {
+        // app/packages own their chooser even when options/options-sh supplies
+        // a filter; generic dropdowns are for normal value choices only.
+        param.type != "app" && param.type != "packages" &&
+            (options.isNotEmpty() || param.type == "select" || param.type == "multiple") -> {
             val titles = options.map { it.title.orEmpty() }
             if (titles.isEmpty()) return
             val isMulti = param.multiple || param.type == "multiple"
@@ -303,15 +320,17 @@ private fun ParamField(
             }
         }
         param.type == "app" || param.type == "packages" -> {
-            val isMulti = param.multiple || param.type == "packages"
-            TextButton(text = "选择应用", onClick = onPickApp)
-            if (value.isNotEmpty()) {
-                Text(
-                    text = "当前：$value",
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
+            // The original renderer always used the app chooser for these
+            // types; options merely restrict candidates, never replace it.
+            ArrowPreference(
+                title = title,
+                summary = value
+                    .replace(param.separator, "、")
+                    .takeIf { it.isNotEmpty() }
+                    ?: param.desc
+                    ?: "未选择应用",
+                onClick = onPickApp,
+            )
         }
         param.type == "color" -> {
             ColorParamRow(
