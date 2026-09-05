@@ -129,6 +129,7 @@ fun HomeScreen(
         }
     }
 
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var powerMenu by remember { mutableStateOf(false) }
 
