@@ -354,6 +354,7 @@ private fun TextCard(node: TextNode) {
 @Composable
 private fun TextSlice(row: TextNode.TextRow) {
     var text by remember(row) { mutableStateOf(row.text) }
+    val sliceResult = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     LaunchedEffect(row.dynamicTextSh) {
         if (row.dynamicTextSh.isNotEmpty()) {
             text = withContext(Dispatchers.IO) {
@@ -374,8 +375,13 @@ private fun TextSlice(row: TextNode.TextRow) {
             com.projectkr.shell.ui.pages.openActivity(context, row.activity)
         }
         row.onClickScript.isNotEmpty() -> Modifier.clickable {
-            // Slice taps run synchronously through the persistent shell.
-            com.projectkr.shell.runtime.ScriptActions.eval(row.onClickScript, null)
+            // Original ListItemText: the script output is shown in a dialog.
+            val result = com.projectkr.shell.runtime.ScriptActions.eval(
+                row.onClickScript, null,
+            )
+            if (result.trim().isNotEmpty()) {
+                sliceResult.value = result
+            }
         }
         else -> Modifier
     }
@@ -399,6 +405,23 @@ private fun TextSlice(row: TextNode.TextRow) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
         )
+    }
+
+    // Original ListItemText: run-script results surface in a help dialog.
+    sliceResult.value?.let { result ->
+        top.yukonga.miuix.kmp.overlay.OverlayDialog(
+            title = "脚本输出",
+            show = true,
+            onDismissRequest = { sliceResult.value = null },
+        ) {
+            Text(
+                text = result,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+            )
+        }
     }
 }
 
