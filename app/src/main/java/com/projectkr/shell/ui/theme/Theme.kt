@@ -19,6 +19,13 @@ import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
 enum class KrColorMode {
     SYSTEM, LIGHT, DARK, MONET_SYSTEM, MONET_LIGHT, MONET_DARK;
 
+    /** Explicit rather than ordinal-based so enum reordering cannot leak controls. */
+    val isMonet: Boolean
+        get() = when (this) {
+            MONET_SYSTEM, MONET_LIGHT, MONET_DARK -> true
+            SYSTEM, LIGHT, DARK -> false
+        }
+
     companion object {
         fun fromOrdinal(value: Int): KrColorMode =
             entries.getOrElse(value) { SYSTEM }
@@ -57,15 +64,12 @@ data class KrThemeConfig(
     val keyColorIndex: Int = 0,
     /** Index into [PaletteStyleChoices]; only used by Monet modes. */
     val paletteStyleIndex: Int = 0,
-    /** 0 = Spec2021, 1 = Spec2025 (TonalSpot/Neutral/Vibrant/Expressive only). */
-    val colorSpecIndex: Int = 0,
 )
 
 private const val PREFS = "kr-script-config"
 private const val KEY_MODE = "color_mode"
 private const val KEY_SEED = "key_color_index"
 private const val KEY_STYLE = "palette_style"
-private const val KEY_SPEC = "color_spec"
 
 fun loadThemeConfig(context: Context): KrThemeConfig {
     val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -73,7 +77,6 @@ fun loadThemeConfig(context: Context): KrThemeConfig {
         mode = KrColorMode.fromOrdinal(prefs.getInt(KEY_MODE, 0)),
         keyColorIndex = prefs.getInt(KEY_SEED, 0),
         paletteStyleIndex = prefs.getInt(KEY_STYLE, 0),
-        colorSpecIndex = prefs.getInt(KEY_SPEC, 0),
     )
 }
 
@@ -83,7 +86,6 @@ fun saveThemeConfig(context: Context, config: KrThemeConfig) {
         .putInt(KEY_MODE, config.mode.ordinal)
         .putInt(KEY_SEED, config.keyColorIndex)
         .putInt(KEY_STYLE, config.paletteStyleIndex)
-        .putInt(KEY_SPEC, config.colorSpecIndex)
         .apply()
 }
 
@@ -98,7 +100,9 @@ fun rememberThemeController(config: KrThemeConfig): ThemeController =
             colorSchemeMode = config.mode.toSchemeMode(),
             keyColor = KeyColorChoices.getOrNull(config.keyColorIndex)?.second,
             paletteStyle = PaletteStyleChoices.getOrElse(config.paletteStyleIndex) { PaletteStyleChoices[0] }.second,
-            colorSpec = if (config.colorSpecIndex == 1) ThemeColorSpec.Spec2025 else ThemeColorSpec.Spec2021,
+            // Spec2021 is the tested compatibility baseline; Spec2025 support
+            // is palette-dependent, so it is deliberately not a user setting.
+            colorSpec = ThemeColorSpec.Spec2021,
         )
     }
 
