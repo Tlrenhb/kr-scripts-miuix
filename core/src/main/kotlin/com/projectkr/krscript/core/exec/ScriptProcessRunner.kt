@@ -87,19 +87,23 @@ class ScriptProcessRunner(
             }
         }.start()
 
-        // stdout and stderr drain concurrently (original SimpleShellWatcher):
-        // a stderr burst larger than the pipe buffer must never deadlock stdout.
-        // The exit callback fires only after BOTH streams reach EOF and the
-        // process has terminated, so events are complete before exit.
+        // stdout and stderr must drain concurrently so a stderr burst cannot
+        // block stdout. The consumer callback itself is serialized: callers
+        // commonly append to ordinary mutable lists / Compose state, neither of
+        // which is safe for simultaneous reader-thread mutation.
         val stdoutDone = java.util.concurrent.CountDownLatch(1)
         val stderrDone = java.util.concurrent.CountDownLatch(1)
+        val callbackLock = Any()
+        fun emit(line: String, isError: Boolean) {
+            synchronized(callbackLock) { onLine(line, isError) }
+        }
 
         Thread {
             val reader = BufferedReader(InputStreamReader(process.inputStream, Charsets.UTF_8))
             try {
                 while (true) {
                     val line = reader.readLine() ?: break
-                    onLine(line, false)
+                    emit(line, false)
                 }
             } catch (_: Exception) {
             } finally {
@@ -112,7 +116,7 @@ class ScriptProcessRunner(
             try {
                 while (true) {
                     val line = errReader.readLine() ?: break
-                    onLine(line, true)
+                    emit(line, true)
                 }
             } catch (_: Exception) {
             } finally {
@@ -121,18 +125,20 @@ class ScriptProcessRunner(
         }.start()
 
         Thread {
+            val code = try {
+                process.waitFor()
+            } catch (_: InterruptedException) {
+                -1
+            }
             try {
+                // Both drainers complete their last emit before counting down.
                 stdoutDone.await(60, java.util.concurrent.TimeUnit.SECONDS)
                 stderrDone.await(60, java.util.concurrent.TimeUnit.SECONDS)
-                val code = try {
-                    process.waitFor()
-                } catch (ex: InterruptedException) {
-                    -1
-                }
-                onExit(code)
-            } catch (_: Exception) {
-                onExit(-1)
+            } catch (_: InterruptedException) {
             }
+            // The lock makes the terminal callback ordered after every line
+            // callback even if a consumer performs non-thread-safe bookkeeping.
+            synchronized(callbackLock) { onExit(code) }
         }.start()
 
         return process
