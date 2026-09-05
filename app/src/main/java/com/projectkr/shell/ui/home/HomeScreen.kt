@@ -6,7 +6,10 @@ package com.projectkr.shell.ui.home
 import android.app.Activity
 import android.os.Build
 import android.widget.Toast
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.projectkr.krscript.core.model.RunnableNode
@@ -48,7 +52,9 @@ import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Ok
 import top.yukonga.miuix.kmp.icon.extended.Reset
+import top.yukonga.miuix.kmp.icon.extended.Unlock
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import top.yukonga.miuix.kmp.utils.scrollEndHaptic
@@ -205,13 +211,76 @@ fun HomeScreen(
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp),
         ) {
             item {
+                // Hero status card (KernelSU StatusCard pattern): tinted
+                // background + watermark icon, clickable into the monitor.
+                val statusTint = if (rooted) Color(0xFFDFFAE4) else Color(0xFFF8E2E2)
+                if (!isSystemInDarkTheme()) {
+                    // light mode uses the tints above; dark mode uses deep tints
+                }
+                val tint = if (isSystemInDarkTheme()) {
+                    if (rooted) Color(0xFF1A3825) else Color(0xFF310808)
+                } else statusTint
+                Card(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
+                    colors = top.yukonga.miuix.kmp.basic.CardDefaults.defaultColors(color = tint),
+                ) {
+                    Box(Modifier.fillMaxWidth()) {
+                        Icon(
+                            imageVector = if (rooted) MiuixIcons.Ok else MiuixIcons.Unlock,
+                            contentDescription = null,
+                            tint = if (rooted) Color(0xFF36D167).copy(alpha = 0.18f)
+                                   else Color(0xFFF72727).copy(alpha = 0.12f),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = 38.dp, y = 45.dp)
+                                .size(170.dp),
+                        )
+                        Column(Modifier.padding(20.dp)) {
+                            Text(
+                                if (rooted) "ROOT 已授权" else "ROOT 未授权",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                Build.MODEL + " · Android " + Build.VERSION.RELEASE,
+                                fontSize = 14.sp,
+                                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                // Two stat mini-cards: live CPU and RAM figures.
+                Row(
+                    Modifier
+                        .padding(horizontal = 12.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    StatMiniCard(
+                        label = "CPU",
+                        value = if (cpuUsage >= 0) "${(cpuUsage * 100).toInt()}%" else "-",
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatMiniCard(
+                        label = "内存",
+                        value = if (memTotal > 0) fmt(memUsed) else "-",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            item {
                 Card(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                     Column(Modifier.padding(16.dp)) {
-                        SectionTitle("设备信息")
                         InfoRow("型号", Build.MODEL)
                         InfoRow("Android", Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")")
                         InfoRow("内核", System.getProperty("os.version").orEmpty())
-                        InfoRow("ROOT", if (rooted) "已授权" else "未授权")
                     }
                 }
             }
@@ -347,6 +416,21 @@ fun HomeScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun StatMiniCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Card(modifier = modifier) {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                label,
+                fontSize = 15.sp,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(value, fontSize = 24.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 
