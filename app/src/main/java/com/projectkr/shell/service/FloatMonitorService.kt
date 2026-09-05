@@ -104,6 +104,30 @@ class FloatMonitorService : Service() {
     companion object {
         private const val INTERVAL_MS = 1000L
 
+        private var lastCpuBusy = 0L
+        private var lastCpuTotal = 0L
+
+        /** /proc/stat 全局 cpu 行的增量负载（原版 CpuLoadUtils 语义）。 */
+        internal fun readCpuLoad(): Float {
+            val ok = runCatching {
+                val stat = File("/proc/stat").bufferedReader().readLine()
+                    .split(Regex("\\s+")).drop(1).map { it.toLong() }
+                val idle = stat.getOrElse(3) { 0L } + stat.getOrElse(4) { 0L }
+                val busy = stat[0] + stat[1] + stat[2]
+                val total = stat.sum()
+                val dTotal = total - lastCpuTotal
+                val dBusy = busy - lastCpuBusy
+                lastCpuBusy = busy
+                lastCpuTotal = total
+                if (dTotal > 0 && lastCpuTotal > 0) {
+                    (dBusy.toFloat() / dTotal).coerceIn(0f, 1f)
+                } else {
+                    -1f
+                }
+            }.getOrDefault(-1f)
+            return ok
+        }
+
         internal fun readMaxFreqKHz(): Long {
             var max = 0L
             for (core in 0 until Runtime.getRuntime().availableProcessors()) {

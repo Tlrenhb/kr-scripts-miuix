@@ -56,15 +56,15 @@ internal class FloatMonitorView(context: Context) : View(context) {
     private val rect = RectF()
 
     // ---- 采样数据 ----
-    var cpuLoadP = 0
-    var gpuLoadP = 0
-    var ramLoadP = 0
-    var batteryP = 0
-    var cpuMhz = 0
-    var gpuMhz = 0
-    var ramGb = 0
-    var batteryLevel = -1
-    var batteryTempC = -1f
+    var cpuLoadP = 0; private set
+    var gpuLoadP = 0; private set
+    var ramLoadP = 0; private set
+    var batteryP = 0; private set
+    var cpuMhz = 0; private set
+    var gpuMhz = 0; private set
+    var ramGb = 0; private set
+    var batteryLevel = -1; private set
+    var batteryTempC = -1f; private set
 
     var onClose: (() -> Unit)? = null
 
