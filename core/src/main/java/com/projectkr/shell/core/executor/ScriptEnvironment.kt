@@ -6,7 +6,7 @@ package com.projectkr.shell.core.executor
 import android.content.Context
 import android.os.Build
 import android.os.Environment
-import android.os.Process
+import android.os.Process as AndroidProcess
 import android.os.UserManager
 import com.projectkr.shell.core.config.ShellRunner
 import com.projectkr.shell.core.model.NodeInfoBase
@@ -303,7 +303,7 @@ class ScriptEnvironment(
          */
         private fun getUserSerial(context: Context): Int {
             val um = context.getSystemService(Context.USER_SERVICE) as UserManager
-            val userHandle = Process.myUserHandle()
+            val userHandle = AndroidProcess.myUserHandle()
 
             var value = 0
             try {
@@ -337,7 +337,7 @@ class ScriptEnvironment(
                 // @ https://blog.csdn.net/Gaugamela/article/details/78689580
                 // 100000 => UserHandle.PER_USER_RANGE
                 params["APP_USER_ID"] =
-                    "u" + androidUid + "_a" + ((Process.myUid() % 100000) - Process.FIRST_APPLICATION_UID)
+                    "u" + androidUid + "_a" + ((AndroidProcess.myUid() % 100000) - AndroidProcess.FIRST_APPLICATION_UID)
             } catch (ignored: Exception) {
             }
 

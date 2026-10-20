@@ -609,12 +609,15 @@ class PageConfigReader(
                         textRow.dynamicTextSh = attrValue
                     }
                     "align" -> {
+                        // 原版使用 Layout.Alignment.ALIGN_LEFT / ALIGN_RIGHT，但这两个常量在 AOSP 中是
+                        // @hide（公共 SDK 不可见），故改用语义等价的公共常量：
+                        // left → ALIGN_NORMAL（按书写方向贴起始边），right → ALIGN_OPPOSITE（贴结束边）
                         when (attrValue) {
                             "left" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                textRow.align = Layout.Alignment.ALIGN_LEFT
+                                textRow.align = Layout.Alignment.ALIGN_NORMAL
                             }
                             "right" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                textRow.align = Layout.Alignment.ALIGN_RIGHT
+                                textRow.align = Layout.Alignment.ALIGN_OPPOSITE
                             }
                             "center" -> textRow.align = Layout.Alignment.ALIGN_CENTER
                             "normal" -> textRow.align = Layout.Alignment.ALIGN_NORMAL

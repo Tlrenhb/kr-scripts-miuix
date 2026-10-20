@@ -44,6 +44,9 @@ abstract class ShellHandlerBase : Handler {
         /** 脚本写入日志 */
         const val EVENT_WRITE = 6
 
+        // 原版正则：^progress:\[[\-0-9\\]{1,}/[0-9\\]{1,}\]$
+        private val progressPattern = Regex("^progress:\\[[\\-0-9\\\\]{1,}/[0-9\\\\]{1,}\\]\$")
+
         /** 处理Exitvalue */
         const val EVENT_EXIT = -2
     }
@@ -134,10 +137,5 @@ abstract class ShellHandlerBase : Handler {
             spannableString.setSpan(ForegroundColorSpan(color), 0, msgStr.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             updateLog(spannableString)
         }
-    }
-
-    private companion object {
-        // 原版正则：^progress:\[[\-0-9\\]{1,}/[0-9\\]{1,}\]$
-        val progressPattern = Regex("^progress:\\[[\\-0-9\\\\]{1,}/[0-9\\\\]{1,}\\]\$")
     }
 }
