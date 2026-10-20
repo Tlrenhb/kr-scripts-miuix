@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 无 ActionBar 的 Material 主题（供 edge-to-edge Compose 壳使用；不引入 material 依赖）。
+         状态/导航栏透明；亮/暗状态栏图标由 Compose 侧（enableEdgeToEdge / SystemBarStyle）驱动，
+         这里不再硬编码 windowLightStatusBar。 -->
     <style name="Theme.KrScriptMiuix" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/white</item>
     </style>
 </resources>

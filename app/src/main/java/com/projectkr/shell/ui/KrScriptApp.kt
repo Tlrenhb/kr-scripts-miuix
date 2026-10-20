@@ -651,6 +651,8 @@ private fun MonitorScreen(
 
 @Composable
 private fun CpuChart(values: List<Float>, modifier: Modifier = Modifier) {
+    // 主题色必须在 @Composable 上下文里读取（Canvas 的绘制 lambda 不是 @Composable）
+    val barColor = MiuixTheme.colorScheme.primary
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -662,7 +664,7 @@ private fun CpuChart(values: List<Float>, modifier: Modifier = Modifier) {
         values.forEachIndexed { index, value ->
             val barHeight = (value / max) * size.height
             drawRect(
-                color = MiuixTheme.colorScheme.primary,
+                color = barColor,
                 topLeft = Offset(index * step, size.height - barHeight),
                 size = Size(step * 0.7f, barHeight)
             )
