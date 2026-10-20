@@ -18,7 +18,7 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.os.Build
-import android.os.Choreographer
+import android.view.Choreographer
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper

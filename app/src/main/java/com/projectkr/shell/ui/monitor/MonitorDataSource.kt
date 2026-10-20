@@ -17,7 +17,7 @@ import java.io.File
  *   scaling_min_freq / scaling_max_freq（原版 `Constants.scaling_cur_freq` 实际指向
  *   cpuinfo_cur_freq，这里按任务约定直接读 scaling_cur_freq）。
  * - CPU 负载：/proc/stat 两次采样差值（移植原版 CpuLoadUtils 的算法）。
- * - GPU：优先 /sys/kernel/gpu/*，其次高通 /sys/class/kgsl/kgsl-3d0/*（原版 GpuUtils）。
+ * - GPU：优先 /sys/kernel/gpu/ 目录，其次高通 /sys/class/kgsl/kgsl-3d0/ 目录（原版 GpuUtils）。
  * - 内存（含 Swap）：/proc/meminfo。
  * - 电池：/sys/class/power_supply 尽力而为，电量回退 BatteryManager。
  *
