@@ -4,78 +4,109 @@
 package com.projectkr.shell.core.executor
 
 import android.content.Context
-import java.io.File
-import java.util.HashMap
 
 /**
- * 简化版资源解压：把 assets 中的脚本/资源复制到应用私有目录。
+ * Port of `krscript/src/main/java/com/omarea/krscript/executor/ExtractAssets.java` @ b90f2cc.
+ *
+ * Assets are mirrored into the app private files dir; `.sh` files go through
+ * [FileWrite.writePrivateShellFile] (CR/LF normalization), everything else through
+ * [FileWrite.writePrivateFile] (chmod +x/+r/+w). Extraction is memoized **per
+ * process** in a static map, exactly like the original.
  */
 class ExtractAssets(private val context: Context) {
-    private val extractHistory = HashMap<String, String>()
 
-    fun extractResource(fileName: String): String? {
-        if (fileName.isBlank()) return null
-        extractHistory[fileName]?.let { return it }
-
-        val normalized = if (fileName.startsWith(ASSETS_PREFIX)) {
-            fileName.substring(ASSETS_PREFIX.length)
-        } else {
-            fileName
+    private fun extractScript(fileNameIn: String?): String? {
+        if (fileNameIn == null || fileNameIn.isEmpty()) {
+            return null
         }
 
-        val target = File(context.filesDir, normalized)
-        target.parentFile?.mkdirs()
-        return try {
-            context.assets.open(normalized).use { input ->
-                target.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-            target.absolutePath.also {
-                extractHistory[fileName] = it
-            }
-        } catch (e: Exception) {
-            null
+        if (extractHistory.containsKey(fileNameIn)) {
+            return extractHistory[fileNameIn]
         }
+
+        var fileName = fileNameIn
+        if (fileName.startsWith("file:///android_asset/")) {
+            fileName = fileName.substring("file:///android_asset/".length)
+        }
+
+        val filePath = FileWrite.writePrivateShellFile(fileName, fileName, context)
+
+        if (filePath != null) {
+            extractHistory[fileName] = filePath
+        }
+
+        return filePath
     }
 
-    fun extractResources(dir: String): String? {
-        if (dir.isBlank()) return null
-        extractHistory[dir]?.let { return it }
-
-        val normalized = when {
-            dir.startsWith(ASSETS_PREFIX) -> dir.substring(ASSETS_PREFIX.length)
-            dir.endsWith("/") -> dir.dropLast(1)
-            else -> dir
+    fun extractResource(fileNameIn: String?): String? {
+        if (fileNameIn == null || fileNameIn.isEmpty()) {
+            return null
         }
 
-        return try {
-            val children = context.assets.list(normalized)
-            if (children != null && children.isNotEmpty()) {
-                children.forEach { child ->
-                    extractResource("$normalized/$child")
+        if (extractHistory.containsKey(fileNameIn)) {
+            return extractHistory[fileNameIn]
+        }
+
+        if (fileNameIn.endsWith(".sh")) {
+            return extractScript(fileNameIn)
+        }
+        var fileName = fileNameIn
+        if (fileName.startsWith("file:///android_asset/")) {
+            fileName = fileName.substring("file:///android_asset/".length)
+        }
+        val filePath = FileWrite.writePrivateFile(context.assets, fileName, fileName, context)
+
+        if (filePath != null) {
+            extractHistory[fileName] = filePath
+        }
+
+        return filePath
+    }
+
+    fun extractResources(dirIn: String?): String? {
+        if (dirIn == null || dirIn.isEmpty()) {
+            return null
+        }
+
+        if (extractHistory.containsKey(dirIn)) {
+            return extractHistory[dirIn]
+        }
+
+        var dir = dirIn
+        if (dir.startsWith("file:///android_asset/")) {
+            dir = dir.substring("file:///android_asset/".length)
+        } else if (dir.endsWith("/")) {
+            dir = dir.substring(0, dir.length - 1)
+        }
+
+        try {
+            val files = context.assets.list(dir)
+            if (files != null && files.isNotEmpty()) {
+                for (file in files) {
+                    val relativePath = "$dir/$file"
+                    extractResources(relativePath)
                 }
-                val path = getExtractPath(normalized)
-                extractHistory[dir] = path
-                path
+                val outputDir = getExtractPath(dir)
+                extractHistory[dir] = outputDir
+                return outputDir
             } else {
-                extractResource(normalized)
+                return extractResource(dir)
             }
-        } catch (e: Exception) {
-            null
+        } catch (ignored: Exception) {
         }
+
+        return ""
     }
 
     fun getExtractPath(file: String): String {
-        val normalized = if (file.startsWith(ASSETS_PREFIX)) {
-            file.substring(ASSETS_PREFIX.length)
-        } else {
-            file
-        }
-        return File(context.filesDir, normalized).absolutePath
+        return FileWrite.getPrivateFilePath(
+            context,
+            if (file.startsWith("file:///android_asset/")) file.substring("file:///android_asset/".length) else file
+        )
     }
 
-    private companion object {
-        const val ASSETS_PREFIX = "file:///android_asset/"
+    companion object {
+        // 用于记录已经提取过的资源，避免重复提取浪费性能（进程级，与原版 static 一致）
+        private val extractHistory = HashMap<String, String>()
     }
 }

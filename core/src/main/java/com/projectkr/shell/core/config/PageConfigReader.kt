@@ -47,7 +47,7 @@ class PageConfigReader(
             return parseConfigXml(pageConfigStream!!)
         } else {
             try {
-                val pathAnalysis = PathAnalysis(context, parentDir)
+                val pathAnalysis = PathAnalysis(context, parentDir, shellRunner)
                 val fileInputStream = pathAnalysis.parsePath(pageConfig) ?: return ArrayList()
                 pageConfigAbsPath = pathAnalysis.getCurrentAbsPath()
                 return parseConfigXml(fileInputStream)
@@ -610,8 +610,12 @@ class PageConfigReader(
                     }
                     "align" -> {
                         when (attrValue) {
-                            "left" -> textRow.align = Layout.Alignment.ALIGN_NORMAL
-                            "right" -> textRow.align = Layout.Alignment.ALIGN_OPPOSITE
+                            "left" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                textRow.align = Layout.Alignment.ALIGN_LEFT
+                            }
+                            "right" -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                textRow.align = Layout.Alignment.ALIGN_RIGHT
+                            }
                             "center" -> textRow.align = Layout.Alignment.ALIGN_CENTER
                             "normal" -> textRow.align = Layout.Alignment.ALIGN_NORMAL
                         }
@@ -680,6 +684,71 @@ class PageConfigReader(
             vitualRootNode = NodeInfoBase(pageConfigAbsPath)
         }
 
-        return shellRunner.execute(scriptIn)
+        return NodeScriptExecutor(context, shellRunner).execute(scriptIn, vitualRootNode)
+    }
+}
+
+/**
+ * 解析期脚本执行（对齐 b90f2cc `ScriptEnvironmen.executeResultRoot` 的语义）：
+ * - 空脚本 → `""`
+ * - 以 `file:///android_asset/` 开头的脚本 → 先抽取到应用私有目录，再以 `sh <抽取路径>` 执行
+ * - 其它脚本 → 原样执行
+ * - 依据 node 注入 `PAGE_CONFIG_DIR`/`PAGE_CONFIG_FILE`/`PAGE_WORK_DIR`/`PAGE_WORK_FILE`
+ *   环境变量（assets 来源时 WORK 指向抽取后的私有路径）。
+ *
+ * 与原版差异：原版把 export 行写进常驻 shell 的 stdin、再调 executor 执行脚本文件；
+ * 重写版把 export 行拼进脚本文本一起缓存执行 —— export 在同一进程内生效，对脚本本身
+ * 效果等价。原版空节点分支的 quirk（导出两次 `PAGE_WORK_DIR`、从不导出 `PAGE_WORK_FILE`）
+ * 原样保留。另：原版经 `ShellTranslation` 做 `@string:` 输出翻译，重写版无此环节。
+ */
+internal class NodeScriptExecutor(
+    private val context: Context,
+    private val shellRunner: ShellRunner,
+) {
+    private val assetsFile = "file:///android_asset/"
+
+    fun execute(script: String, node: NodeInfoBase?): String {
+        if (script.isEmpty()) {
+            return ""
+        }
+
+        val script2 = script.trim()
+        val body = if (script2.startsWith(assetsFile)) {
+            // asset 脚本：抽取为私有文件后按文件执行（原版 extractScript 语义）
+            val path = ExtractAssets(context).extractResource(script2)
+            if (path != null) "sh \"$path\"" else script
+        } else {
+            script
+        }
+
+        return shellRunner.execute(envPrefix(node) + body)
+    }
+
+    private fun envPrefix(node: NodeInfoBase?): String {
+        val stringBuilder = StringBuilder("\n")
+        if (node != null && node.currentPageConfigPath.isNotEmpty()) {
+            val parentPageConfigDir = node.pageConfigDir
+            val currentPageConfigPath = node.currentPageConfigPath
+            stringBuilder.append("export PAGE_CONFIG_DIR='").append(parentPageConfigDir).append("'\n")
+            stringBuilder.append("export PAGE_CONFIG_FILE='").append(currentPageConfigPath).append("'\n")
+
+            if (currentPageConfigPath.startsWith(assetsFile)) {
+                stringBuilder.append("export PAGE_WORK_DIR='")
+                    .append(ExtractAssets(context).getExtractPath(parentPageConfigDir)).append("'\n")
+                stringBuilder.append("export PAGE_WORK_FILE='")
+                    .append(ExtractAssets(context).getExtractPath(currentPageConfigPath)).append("'\n")
+            } else {
+                stringBuilder.append("export PAGE_WORK_DIR='").append(parentPageConfigDir).append("'\n")
+                stringBuilder.append("export PAGE_WORK_FILE='").append(currentPageConfigPath).append("'\n")
+            }
+        } else {
+            stringBuilder.append("export PAGE_CONFIG_DIR=''\n")
+            stringBuilder.append("export PAGE_CONFIG_FILE=''\n")
+            stringBuilder.append("export PAGE_WORK_DIR=''\n")
+            // 原版 quirk：这里重复导出 PAGE_WORK_DIR，而从不导出 PAGE_WORK_FILE —— 原样保留
+            stringBuilder.append("export PAGE_WORK_DIR=''\n")
+        }
+        stringBuilder.append("\n\n")
+        return stringBuilder.toString()
     }
 }
