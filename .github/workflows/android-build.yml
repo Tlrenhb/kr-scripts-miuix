@@ -14,18 +14,56 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      # runner 镜像自带 Android SDK；不再使用 setup-android（其会尝试安装已下线的 tools 包）
+      - name: Show Android SDK state
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          ls "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/platforms" || true
+          ls "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" || true
+
+      - name: Accept licenses and install SDK platform
+        run: |
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          # 取最高版本 cmdline-tools
+          CT=$(ls -d "$SDK"/cmdline-tools/*/ 2>/dev/null | sort -V | tail -1)
+          BIN="${CT}bin"
+          export PATH="$BIN:$PATH"
+          if [ ! -x "$BIN/sdkmanager" ]; then
+            echo "sdkmanager not found, downloading"
+            mkdir -p "$SDK/cmdline-tools/latest"
+            curl -sL -o /tmp/clt.zip https://dl.google.com/android/repository/commandlinetools-linux-13114758_latest.zip
+            unzip -q -o /tmp/clt.zip -d /tmp/clt
+            cp -r /tmp/clt/cmdline-tools/* "$SDK/cmdline-tools/latest/"
+            BIN="$SDK/cmdline-tools/latest/bin"
+            export PATH="$BIN:$PATH"
+          fi
+          yes | "$BIN/sdkmanager" --licenses > /dev/null 2>&1 || true
+          # 安装构建所需平台/工具（按项目 compileSdk 37）
+          "$BIN/sdkmanager" "platform-tools" "platforms;android-37" "build-tools;37.0.0" || \
+            "$BIN/sdkmanager" "platform-tools"
+          echo "installed platforms:"; ls "$SDK/platforms"
 
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts','gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
       - name: Upload debug APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: kr-scripts-miuix-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
